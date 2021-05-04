@@ -42,14 +42,12 @@ function setup(map, params) {
 
     cameraPos: ball.cameraPos,
     cursorPos: ball.cursorPos,
-    cursorChanged: ball.cursorChanged,
     isMoving: ball.camMoving,
     wasTapped: ball.wasTapped,
 
     addMarker: markers.add,
     removeMarker: markers.remove,
 
-    when: eventHandler.addListener,
     destroy: satView.destroy,
     breakLoop: 0,
   };

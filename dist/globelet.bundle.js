@@ -490,7 +490,8 @@ function setParams$2(userParams) {
     width: rawWidth = container.clientWidth + 512,
     height: rawHeight = container.clientHeight + 512,
     toolTip,
-    center, altitude,
+    center = [0.0, 0.0],
+    altitude = 20000,
   } = userParams;
 
   // Force width >= height, and both powers of 2
@@ -1299,7 +1300,7 @@ function initGLpaint(context, framebuffer) {
   return { prep, loadBuffers, loadAtlas, initPainter };
 }
 
-function initEventHandler$1() {
+function initEventHandler() {
   // Stores events and listeners. Listeners will be executed even if
   // the event occurred before the listener was added
 
@@ -1364,7 +1365,7 @@ function setParams$1(userParams) {
     fail("invalid size object");
   }
 
-  if (!Array.isArray(center) || !all0to1(...center.slice(2))) {
+  if (!Array.isArray(center) || center.length < 2) {
     fail("invalid center coordinates");
   }
 
@@ -1378,6 +1379,7 @@ function setParams$1(userParams) {
 
   // Convert initial center position from degrees to the specified units
   const projCenter = getProjection("degrees").forward(center);
+  if (!all0to1(...projCenter)) fail ("invalid center coordinates");
   const invCenter = projection.inverse(projCenter);
 
   return {
@@ -1386,7 +1388,7 @@ function setParams$1(userParams) {
     coords: initCoords({ size, center: invCenter, zoom, clampY, projection }),
     style, mapboxToken,
     context: initGLpaint(context, framebuffer),
-    eventHandler: initEventHandler$1(),
+    eventHandler: initEventHandler(),
   };
 }
 
@@ -11473,45 +11475,6 @@ function init(userParams) {
   }
 }
 
-function initEventHandler() {
-  // Stores events and listeners. Listeners will be executed even if
-  // the event occurred before the listener was added
-
-  const events = {};    // { type1: data1, type2: data2, ... }
-  const listeners = {}; // { type1: { id1: func1, id2: func2, ...}, type2: ... }
-  var globalID = 0;
-
-  function emitEvent(type, data = "1") {
-    events[type] = data;
-
-    let audience = listeners[type];
-    if (!audience) return;
-
-    Object.values(audience).forEach(listener => listener(data));
-  }
-
-  function addListener(type, listener) {
-    if (!listeners[type]) listeners[type] = {};
-
-    let id = ++globalID;
-    listeners[type][id] = listener;
-    
-    if (events[type]) listener(events[type]);
-    return id;
-  }
-
-  function removeListener(type, id) {
-    let audience = listeners[type];
-    if (audience) delete audience[id];
-  }
-
-  return {
-    emitEvent,
-    addListener,
-    removeListener,
-  };
-}
-
 // Update tooltip text when mouse or scene changes
 function printToolTip(toolTip, ball) {
   // Input toolTip is an HTML element where positions will be printed
@@ -11673,7 +11636,6 @@ function setup(map, params) {
     map: map.texture,
     flipY: false,
   });
-  const eventHandler = initEventHandler();
   const markers = initMarkers(ball, params.container);
 
   return {
@@ -11689,14 +11651,12 @@ function setup(map, params) {
 
     cameraPos: ball.cameraPos,
     cursorPos: ball.cursorPos,
-    cursorChanged: ball.cursorChanged,
     isMoving: ball.camMoving,
     wasTapped: ball.wasTapped,
 
     addMarker: markers.add,
     removeMarker: markers.remove,
 
-    when: eventHandler.addListener,
     destroy: satView.destroy,
     breakLoop: 0,
   };

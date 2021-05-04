@@ -7,7 +7,8 @@ export function setParams(userParams) {
     width: rawWidth = container.clientWidth + 512,
     height: rawHeight = container.clientHeight + 512,
     toolTip,
-    center, altitude,
+    center = [0.0, 0.0],
+    altitude = 20000,
   } = userParams;
 
   // Force width >= height, and both powers of 2
