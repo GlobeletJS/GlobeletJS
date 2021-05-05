@@ -9,11 +9,9 @@
 
     <link rel="stylesheet" type="text/css" href="globelet.css">
     <link rel="stylesheet" type="text/css" href="styles.css">
-
-    <script src="main.min.js"></script>
   </head>
 
-  <body onload="app.main()">
+  <body>
     <div class="slider">
       <div class="main" id="globe">
         <div class="status" id="toolTip"></div>
@@ -21,4 +19,15 @@
     </div>
   </body>
 
+  <script type="module">
+    import { initGlobe } from "../../dist/globelet.bundle.js";
+
+    initGlobe({
+      container: 'globe',
+      toolTip: 'toolTip',
+      style: "./klokantech-basic-style-geojson.json",
+      center: [-100, 38.5],
+      altitude: 6280,
+    }).then(globe => globe.startAnimation());
+  </script>
 </html>

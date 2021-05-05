@@ -1,5 +1,3 @@
-'use strict';
-
 import { setParams } from "./params.js";
 import { initMap } from "./map.js";
 import * as spinningBall from 'spinning-ball';

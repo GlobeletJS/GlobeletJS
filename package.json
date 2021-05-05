@@ -9,9 +9,8 @@
   "directories": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npm run build-module && npm run build-examples",
+    "build": "npm run build-module && npm run copy-assets",
     "build-module": "rollup -c build/rollup.config.js",
-    "build-examples": "npm run copy-assets & cd examples && rollup -c",
     "copy-assets": "echo examples/*/ | xargs -n 1 cp dist/globelet.css dist/globelet.svg"
   },
   "repository": {
