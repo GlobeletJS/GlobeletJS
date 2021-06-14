@@ -25,7 +25,7 @@ function setup(map, params) {
     flipY: false,
   });
   const eventHandler = initEventHandler();
-  const markers = initMarkers(ball, params.container);
+  const markers = initMarkers(ball, params);
 
   return {
     mapLoaded: map.loaded,

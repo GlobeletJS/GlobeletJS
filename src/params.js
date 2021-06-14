@@ -1,9 +1,11 @@
 import * as yawgl from 'yawgl';
+import { version } from "../package.json";
 
 export function setParams(userParams) {
   const container = document.getElementById(userParams.container);
   const {
     style, mapboxToken,
+    svgPath = "https://unpkg.com/globeletjs@" + version + "/dist/globelet.svg",
     width: rawWidth = container.clientWidth + 512,
     height: rawHeight = container.clientHeight + 512,
     toolTip,
@@ -24,7 +26,7 @@ export function setParams(userParams) {
   const context = yawgl.initContext(gl);
 
   return {
-    style, mapboxToken,
+    style, mapboxToken, svgPath,
     width, height,
     container, context,
     toolTip: document.getElementById(toolTip),

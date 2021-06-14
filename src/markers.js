@@ -1,6 +1,4 @@
-import { createDefaultMarker, createDefaultSpot } from "./markers-svg.js";
-
-export function initMarkers(globe, display) {
+export function initMarkers(globe, { display, svgPath }) {
   const markerList = [];
 
   return {
@@ -9,19 +7,15 @@ export function initMarkers(globe, display) {
     update: () => markerList.forEach(setPosition),
   };
 
-  function add(options) {
-    // Create the marker element, if not supplied
-    let element = getMarkerElement(options.element, options.type);
-    display.appendChild(element);
-
-    // Initialize the marker object
+  function add({ element, type, lonLat, altitude }) {
     const marker = {
-      element,
+      element: getMarkerElement(element, type),
       // TODO: bad naming? lonLat includes altitude. Altitude currently unused
-      lonLat: new Float64Array([...options.lonLat, options.altitude || 0.0]),
+      lonLat: new Float64Array([...lonLat, altitude || 0.0]),
       screenPos: new Float64Array(2),
     };
-    // Set the initial position
+
+    display.appendChild(marker.element);
     setPosition(marker);
 
     // Add to the list, and return the pointer to the user
@@ -29,13 +23,23 @@ export function initMarkers(globe, display) {
     return marker;
   }
 
-  function getMarkerElement(userElement, markerType) {
-    let elType = userElement ? userElement.nodeName : null;
-    return (elType === "DIV" || elType === "IMG" || elType === "SVG")
-      ? userElement
-      : (markerType === "spot")
-      ? createDefaultSpot()
-      : createDefaultMarker();
+  function getMarkerElement(element, type) {
+    return (element && ["DIV", "IMG", "SVG"].includes(element.nodeName))
+      ? element
+      : createSVG(type);
+  }
+
+  function createSVG(type) {
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("class", type);
+
+    const use = document.createElementNS(svgNS, "use");
+    use.setAttribute("href", svgPath + "#" + type);
+    svg.appendChild(use);
+
+    return svg;
   }
 
   function remove(marker) {
@@ -48,14 +52,12 @@ export function initMarkers(globe, display) {
   }
 
   function setPosition(marker) {
-    // Project coordinates to screen position, using current globe orientation
-    var visible = globe.lonLatToScreenXY(marker.screenPos, marker.lonLat);
-    // Set CSS visibility
-    marker.element.style.display = (visible)
-      ? "inline-block"
-      : "none";
-    // Set CSS position
-    marker.element.style.left = marker.screenPos[0] + "px";
-    marker.element.style.top = marker.screenPos[1] + "px";
+    const visible = globe.lonLatToScreenXY(marker.screenPos, marker.lonLat);
+
+    Object.assign(marker.element.style, {
+      display: (visible) ? "inline-block" : "none",
+      left: marker.screenPos[0] + "px",
+      top: marker.screenPos[1] + "px",
+    });
   }
 }
