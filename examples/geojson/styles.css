@@ -14,3 +14,7 @@ body {
   position: relative;
   overflow: hidden;
 }
+.slider .spot {
+  width: 18px;
+  height: 18px;
+}

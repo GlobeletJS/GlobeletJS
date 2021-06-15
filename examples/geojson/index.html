@@ -29,6 +29,23 @@
       svgPath: "../../dist/globelet.svg",
       center: [-100, 38.5],
       altitude: 6280,
-    }).then(globe => globe.startAnimation());
+    }).then(globe => {
+      var spot;
+      var requestID = requestAnimationFrame(animate);
+
+      function animate(time) {
+        if (spot) globe.removeMarker(spot);
+        globe.update(time);
+
+        // Check for a mountain under the cursor
+        let mountain = globe.select("mountains", 12);
+        if (mountain) {
+          let lonLat = mountain.geometry.coordinates;
+          spot = globe.addMarker({ lonLat, type: "spot" });
+        }
+
+        requestID = requestAnimationFrame(animate);
+      }
+    });
   </script>
 </html>

@@ -11534,7 +11534,7 @@ function degMinSec( radians ) {
   return deg + "&#176;" + min + "'" + sec + '"';
 }
 
-function initMarkers(globe, { display, svgPath }) {
+function initMarkers(globe, { container, svgPath }) {
   const markerList = [];
 
   return {
@@ -11551,7 +11551,7 @@ function initMarkers(globe, { display, svgPath }) {
       screenPos: new Float64Array(2),
     };
 
-    display.appendChild(marker.element);
+    container.appendChild(marker.element);
     setPosition(marker);
 
     // Add to the list, and return the pointer to the user
@@ -11583,7 +11583,7 @@ function initMarkers(globe, { display, svgPath }) {
     if (index < 0) return;
 
     // Remove it from both the DOM and the list
-    display.removeChild(marker.element);
+    container.removeChild(marker.element);
     markerList.splice(index, 1);
   }
 
