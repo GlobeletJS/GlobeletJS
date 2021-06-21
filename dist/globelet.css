@@ -38,6 +38,13 @@
   position: absolute;
   padding: 0;
 }
+.slider .sprite {
+  width: 0;
+  height: 0;
+  position: absolute;
+  visibility: hidden;
+  display: none;
+}
 .slider .settings {
   position: absolute;
   width: var(--settingwidth);

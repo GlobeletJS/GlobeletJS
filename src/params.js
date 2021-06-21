@@ -1,11 +1,16 @@
 import * as yawgl from 'yawgl';
 import { version } from "../package.json";
+import sprite from "../dist/globelet.svg";
 
 export function setParams(userParams) {
   const container = document.getElementById(userParams.container);
+
+  // Append svg sprite for later reference from 'use' elements
+  container.insertAdjacentHTML('afterbegin', sprite);
+
+  // Get user-supplied parameters
   const {
     style, mapboxToken,
-    svgPath = "https://unpkg.com/globeletjs@" + version + "/dist/globelet.svg",
     width: rawWidth = container.clientWidth + 512,
     height: rawHeight = container.clientHeight + 512,
     toolTip,
@@ -26,7 +31,7 @@ export function setParams(userParams) {
   const context = yawgl.initContext(gl);
 
   return {
-    style, mapboxToken, svgPath,
+    style, mapboxToken, version,
     width, height,
     container, context,
     toolTip: document.getElementById(toolTip),

@@ -1,4 +1,4 @@
-export function initMarkers(globe, { container, svgPath }) {
+export function initMarkers(globe, container) {
   const markerList = [];
 
   return {
@@ -36,7 +36,8 @@ export function initMarkers(globe, { container, svgPath }) {
     svg.setAttribute("class", type);
 
     const use = document.createElementNS(svgNS, "use");
-    use.setAttribute("href", svgPath + "#" + type);
+    // Reference the relevant sprite from the SVG appended in params.js
+    use.setAttribute("href", "#" + type);
     svg.appendChild(use);
 
     return svg;
