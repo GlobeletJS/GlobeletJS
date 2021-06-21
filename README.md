@@ -37,8 +37,8 @@ Or if you prefer, you can use the older-style [IIFE][] bundle:
 <script src="https://unpkg.com/globeletjs@<VERSION>/dist/globelet-iife.js">
 ```
 
-This will also expose a global variable `globeletjs`, which has an `initGlobe`
-method. See the next section for how to use this method.
+Either bundle will give you a global variable `globeletjs`, which has an 
+`initGlobe` method. See the next section for how to use this method.
 
 [IIFE]: https://developer.mozilla.org/en-US/docs/Glossary/IIFE
 
@@ -58,7 +58,7 @@ npm install --save globeletjs
 ```
 
 ## How to initialize a globe
-The imported object has a method that can initialize a new globe as follows:
+The `globelet` object has a method that can initialize a new globe as follows:
 ```javascript
 const globePromise = globelet.initGlobe(params);
 ```
