@@ -485,11 +485,69 @@ function initContext(gl) {
 
 var version = "0.0.1";
 
+var sprite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sprite">
+  <!--Default image for favicon-->
+  <text y="1em" font-size="80">&#127823;</text>
+
+  <!--Spritesheet symbols: not displayed unless "used"-->
+  <symbol id="hamburger" viewBox="0 0 100 70">
+    <rect width="100" height="10" />
+    <rect width="100" height="10" y="30" />
+    <rect width="100" height="10" y="60" />
+  </symbol>
+
+  <symbol id="close" viewBox="0 0 32 32">
+    <line x1="2" y1="2" x2="30" y2="30" />
+    <line x1="2" y1="30" x2="30" y2="2" />
+  </symbol>
+
+  <symbol id="gt" viewBox="0 0 32 32">
+    <line x1="8" y1="2" x2="24" y2="16" />
+    <line x1="24" y1="16" x2="8" y2="30" />
+  </symbol>
+
+  <symbol id="gear" viewBox="0 0 400 400">
+    <!--https://observablehq.com/@jjhembd/gear-icon-generator-->
+    <path d="M390.00,200.00
+      L386.35,237.07L329.16,247.95L311.63,280.75L334.35,334.35
+      L305.56,357.98L257.42,325.23L221.83,336.03L200.00,390.00
+      L162.93,386.35L152.05,329.16L119.25,311.63L65.65,334.35
+      L42.02,305.56L74.77,257.42L63.97,221.83L10.00,200.00
+      L13.65,162.93L70.84,152.05L88.37,119.25L65.65,65.65
+      L94.44,42.02L142.58,74.77L178.17,63.97L200.00,10.00
+      L237.07,13.65L247.95,70.84L280.75,88.37L334.35,65.65
+      L357.98,94.44L325.23,142.58L336.03,178.17z
+      M285.54,200.00A85.54,85.54,0,1,0,285.54,200.27z" />
+  </symbol>
+
+  <symbol id="marker" viewBox="0 0 24 24">
+    <!-- Follows baseline-place-24px.svg from 
+         https://material.io/tools/icons/?icon=place&style=baseline -->
+    <path d="M12,2
+      C8.13,2 5,5.13 5,9
+      c0,5.25 7,13 7,13
+      s7,-7.75 7,-13
+      c0,-3.87 -3.13,-7 -7,-7z
+      m0,9.5
+      c-1.38,0 -2.5,-1.12 -2.5,-2.5
+      s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z" />
+  </symbol>
+
+  <symbol id="spot" viewBox="0 0 12 12">
+    <circle cx="6" cy="6" r="5" />
+  </symbol>
+</svg>
+`;
+
 function setParams$2(userParams) {
   const container = document.getElementById(userParams.container);
+
+  // Append svg sprite for later reference from 'use' elements
+  container.insertAdjacentHTML('afterbegin', sprite);
+
+  // Get user-supplied parameters
   const {
     style, mapboxToken,
-    svgPath = "https://unpkg.com/globeletjs@" + version + "/dist/globelet.svg",
     width: rawWidth = container.clientWidth + 512,
     height: rawHeight = container.clientHeight + 512,
     toolTip,
@@ -510,7 +568,7 @@ function setParams$2(userParams) {
   const context = initContext(gl);
 
   return {
-    style, mapboxToken, svgPath,
+    style, mapboxToken, version,
     width, height,
     container, context,
     toolTip: document.getElementById(toolTip),
@@ -11534,7 +11592,7 @@ function degMinSec( radians ) {
   return deg + "&#176;" + min + "'" + sec + '"';
 }
 
-function initMarkers(globe, { container, svgPath }) {
+function initMarkers(globe, container) {
   const markerList = [];
 
   return {
@@ -11572,7 +11630,8 @@ function initMarkers(globe, { container, svgPath }) {
     svg.setAttribute("class", type);
 
     const use = document.createElementNS(svgNS, "use");
-    use.setAttribute("href", svgPath + "#" + type);
+    // Reference the relevant sprite from the SVG appended in params.js
+    use.setAttribute("href", "#" + type);
     svg.appendChild(use);
 
     return svg;
@@ -11616,7 +11675,7 @@ function setup(map, params) {
     map: map.texture,
     flipY: false,
   });
-  const markers = initMarkers(ball, params);
+  const markers = initMarkers(ball, params.container);
 
   return {
     mapLoaded: map.loaded,

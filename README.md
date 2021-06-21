@@ -21,8 +21,9 @@ a few things, but it will do them well.
 [CesiumJS]: https://github.com/AnalyticalGraphicsInc/cesium
 
 ## Installation
-For module bundlers, GlobeletJS is provided as an ESM import.
-First install the package:
+GlobeletJS is provided as an ESM import.
+
+On Node.js, first install the package:
 ```bash
 npm install --save globeletjs
 ```
@@ -32,10 +33,24 @@ Then import it into your Javascript file:
 import * as globelet from 'globeletjs';
 ```
 
-Globelet also uses two additional files, which you will need to copy into the
-same directory as your HTML file. These are found in the /dist folder:
-- globelet.css
-- globelet.svg
+Or if you are importing directly into a browser:
+```html
+<script type="module">
+  import * as globelet from "https://unpkg.com/globeletjs@<VERSION>/dist/globelet.js";
+
+  // Initialize globe here...
+  // ...
+</script>
+```
+
+Make sure to also link to the stylesheet (/dist/globelet.js) in the `<head>`
+of your HTML file.
+```html
+<link 
+  rel="stylesheet" 
+  type="text/css" 
+  href="https://unpkg.com/globeletjs@<VERSION>/dist/globelet.css">
+```
 
 ## Syntax
 The imported object has a method that can initialize a new globe as follows:
