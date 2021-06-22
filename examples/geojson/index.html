@@ -19,10 +19,11 @@
     </div>
   </body>
 
+  <!--<script src="../../dist/globelet-iife.js"></script>-->
   <script type="module">
-    import { initGlobe } from "../../dist/globelet.js";
+    import * as globeletjs from "../../dist/globelet.js";
 
-    initGlobe({
+    globeletjs.initGlobe({
       container: 'globe',
       toolTip: 'toolTip',
       style: "./klokantech-basic-style-geojson.json",

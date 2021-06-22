@@ -20,30 +20,27 @@ a few things, but it will do them well.
 [OpenMapTiles]: https://openmaptiles.org/
 [CesiumJS]: https://github.com/AnalyticalGraphicsInc/cesium
 
-## Installation
-GlobeletJS is provided as an ESM import.
-
-On Node.js, first install the package:
-```bash
-npm install --save globeletjs
-```
-
-Then import it into your Javascript file:
-```javascript
-import * as globelet from 'globeletjs';
-```
-
-Or if you are importing directly into a browser:
+## How to add GlobeletJS code to your webpage
+GlobeletJS is provided as an ESM import. Define your script tag as
+`type="module"`, then import the module:
 ```html
 <script type="module">
-  import * as globelet from "https://unpkg.com/globeletjs@<VERSION>/dist/globelet.js";
+  import * as globeletjs from "https://unpkg.com/globeletjs@<VERSION>/dist/globelet.js";
 
-  // Initialize globe here...
+  // Add code to initialize a globe here...
   // ...
 </script>
 ```
 
-Make sure to also link to the stylesheet (/dist/globelet.js) in the `<head>`
+Or if you prefer, you can use the older-style [IIFE][] bundle:
+```html
+<script src="https://unpkg.com/globeletjs@<VERSION>/dist/globelet-iife.js">
+```
+
+Either bundle will give you a global variable `globeletjs`, which has an 
+`initGlobe` method. See the next section for how to use this method.
+
+Make sure to also link to the stylesheet (/dist/globelet.css) in the `<head>`
 of your HTML file.
 ```html
 <link 
@@ -52,18 +49,26 @@ of your HTML file.
   href="https://unpkg.com/globeletjs@<VERSION>/dist/globelet.css">
 ```
 
-## Syntax
-The imported object has a method that can initialize a new globe as follows:
+[IIFE]: https://developer.mozilla.org/en-US/docs/Glossary/IIFE
+
+## How to initialize a globe
+The `globeletjs` object has an `initGlobe` method that can initialize a new 
+globe as follows:
 ```javascript
-const globePromise = globelet.initGlobe(params);
+const params = {
+  container: 'globe',
+  style: "./klokantech-basic-style-geojson.json",
+  toolTip: 'toolTip',
+  center: [-100, 38.5],
+  altitude: 6280,
+};
+
+const globePromise = globeletjs.initGlobe(params);
 ```
 
-The returned Promise resolves to an API handle.
-
-## Parameters
-The supplied parameters object has the following properties:
-- `container` (REQUIRED): The [ID][] of an [HTML DIV element][] where the globe 
-  will be displayed
+The `params` object supplied to initGlobe can have the following properties:
+- `container` (REQUIRED): The [ID][] of an [HTML DIV element][] where the 
+  globe will be displayed
 - `style` (REQUIRED): A link to a [Mapbox style document][] describing the map 
   to be rendered
 - `mapboxToken`: Your API token for Mapbox services (if needed)
@@ -78,13 +83,26 @@ The supplied parameters object has the following properties:
 - `altitude`: The initial altitude of the camera, in kilometers.
   Default: 20000
 
+The returned Promise resolves to an API handle, which you can use to interact
+with the globe, as described in the next section.
+
 [ID]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id
 [HTML DIV element]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/div
 [Mapbox style document]: https://docs.mapbox.com/mapbox-gl-js/style-spec/
 
-## API
-The Promise returned by `initGlobe` resolves to an API object that
-exposes the following properties and methods:
+## How to interact with the globe API
+The Promise returned by `initGlobe` resolves to an API object, which you can
+use to control the globe.
+
+```javascript
+globePromise.then(globeAPI => {
+  globeAPI.startAnimation();
+
+  // ...etc. Do more things with globeAPI here...
+});
+```
+
+`globeAPI` exposes the following properties and methods:
 - `mapLoaded()`: Returns a fractional number from 0.0 to 1.0 indicating the
   fraction of the tiles needed for the current view that are fully loaded
 - `select(layer, dxy)`: Selects map features from the specified layer, within
@@ -92,27 +110,23 @@ exposes the following properties and methods:
 - `showLayer(layer)`: Turns on rendering for the specified map layer
 - `hideLayer(layer)`: Turns off rendering for the specified map layer
 - `getZoom()`: Returns the current zoom level of the map
-
 - `startAnimation()`: Starts animation
 - `stopAnimation()`: Stops animation
 - `update(time)`: Updates the camera position based on current position and
   velocity and cursor inputs since the last update. Input is a timestamp in
   milliseconds as supplied by [requestAnimationFrame][]. For animation loops
   managed by the parent program
-
 - `cameraPos`: Link to the camera position as reported by [spinning-ball][] 
 - `cursorPos`: Link to the cursor position as reported by [spinning-ball][]
 - `isMoving()`: Returns the value of the camMoving flag in [spinning-ball][]
 - `wasTapped`: Returns the value of the wasTapped flag in [spinning-ball][]
-
 - `addMarker(options)`: Adds a marker to the globe. See markers section below
 - `removeMarker(marker)`: Removes a given marker from memory and from the DOM
-
 - `destroy()`: Clears memory / removes elements from document
 
 [requestAnimationFrame]: https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
 
-## Markers
+## How to add and remove markers
 A marker can be added to the globe as follows:
 ```javascript
 const marker = globeAPI.addMarker(options);
@@ -144,7 +158,12 @@ A marker can be removed from the globe as follows:
 globeAPI.removeMarker(marker);
 ```
 
-## Code structure
+## About the code (for advanced users)
+For development on Node.js, you can install the package from NPM:
+```bash
+npm install --save globeletjs
+```
+
 GlobeletJS works by tying together several other more specialized modules.
 1. We render vector map data to a rectangular texture using [tile-setter][]
 2. Then we wrap the map around a globe using [satellite-view][]
@@ -156,6 +175,3 @@ Also, to save on typing, we delegate the low-level WebGL calls to [yawgl][]
 [satellite-view]: https://github.com/GlobeletJS/satellite-view
 [spinning-ball]: https://github.com/GlobeletJS/spinning-ball
 [yawgl]: https://github.com/GlobeletJS/yawgl
-
-## TO-DO
-- Write a to-do list

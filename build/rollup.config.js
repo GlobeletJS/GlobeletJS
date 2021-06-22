@@ -10,9 +10,13 @@ export default {
     svg(),
     json(),
   ],
-  output: {
-    file: pkg.main,
+  output: [{
+    file: pkg.module,
     format: 'esm',
     name: pkg.name
-  }
+  }, {
+    file: pkg.main,
+    format: 'iife',
+    name: pkg.name
+  }],
 };
