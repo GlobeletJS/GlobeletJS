@@ -58,7 +58,6 @@ globe as follows:
 const params = {
   container: 'globe',
   style: "./klokantech-basic-style-geojson.json",
-  toolTip: 'toolTip',
   center: [-100, 38.5],
   altitude: 6280,
 };
@@ -76,8 +75,6 @@ The `params` object supplied to initGlobe can have the following properties:
   in pixels. Defaults to `container.clientWidth + 512`
 - `height`: The height of the map that will be projected onto the globe,
   in pixels. Defaults to `container.clientHeight + 512`
-- `toolTip`: The [ID][] of an [HTML DIV element][] that will display the
-  current longitude, latitude, and altitude of the camera
 - `center`: The initial geographic position of the camera, given as
   [longitude, latitude] in degrees. Default: [0.0, 0.0]
 - `altitude`: The initial altitude of the camera, in kilometers.

@@ -12,20 +12,14 @@
   </head>
 
   <body>
-    <div class="slider">
-      <div class="main" id="globe">
-        <div class="status" id="toolTip"></div>
-      </div>
-    </div>
+    <div id="globe"></div>
   </body>
 
-  <!--<script src="../../dist/globelet-iife.js"></script>-->
   <script type="module">
     import * as globeletjs from "../../dist/globelet.js";
 
     globeletjs.initGlobe({
       container: 'globe',
-      toolTip: 'toolTip',
       style: "./klokantech-basic-style-geojson.json",
       center: [-100, 38.5],
       altitude: 6280,
