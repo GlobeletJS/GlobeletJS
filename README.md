@@ -52,14 +52,23 @@ of your HTML file.
 [IIFE]: https://developer.mozilla.org/en-US/docs/Glossary/IIFE
 
 ## How to initialize a globe
-The `globeletjs` object has a method that can initialize a new globe as follows:
+The `globeletjs` object has an `initGlobe` method that can initialize a new 
+globe as follows:
 ```javascript
+const params = {
+  container: 'globe',
+  style: "./klokantech-basic-style-geojson.json",
+  toolTip: 'toolTip',
+  center: [-100, 38.5],
+  altitude: 6280,
+};
+
 const globePromise = globeletjs.initGlobe(params);
 ```
 
-The `params` object supplied to initGlobe has the following properties:
-- `container` (REQUIRED): The [ID][] of an [HTML DIV element][] where the globe 
-  will be displayed
+The `params` object supplied to initGlobe can have the following properties:
+- `container` (REQUIRED): The [ID][] of an [HTML DIV element][] where the 
+  globe will be displayed
 - `style` (REQUIRED): A link to a [Mapbox style document][] describing the map 
   to be rendered
 - `mapboxToken`: Your API token for Mapbox services (if needed)
