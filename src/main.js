@@ -17,7 +17,7 @@ export function initGlobe(userParams) {
 function setup(map, params) {
   var requestID;
 
-  const ball = spinningBall.init(params.container, params.center, params.altitude);
+  const ball = spinningBall.init(params.globeDiv, params.center, params.altitude);
   const satView = satelliteView.init({
     context: params.context,
     globeRadius: ball.radius(),
@@ -25,7 +25,7 @@ function setup(map, params) {
     flipY: false,
   });
   const eventHandler = initEventHandler();
-  const markers = initMarkers(ball, params.container);
+  const markers = initMarkers(ball, params.globeDiv);
 
   return {
     mapLoaded: map.loaded,
@@ -46,7 +46,7 @@ function setup(map, params) {
     addMarker: markers.add,
     removeMarker: markers.remove,
 
-    destroy: satView.destroy,
+    destroy: () => (satView.destroy(), params.globeDiv.remove()),
     breakLoop: 0,
   };
 

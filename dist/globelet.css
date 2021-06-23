@@ -1,4 +1,4 @@
-.slider {
+.globelet {
   --settingwidth: min(480px, 100vw);
   --infowidth: min(480px, 50vw);
   --xslide: min(480px, 50vw);
@@ -6,20 +6,20 @@
   --yslide: 0px;
 }
 @media screen and (max-width: 768px) and (orientation: portrait) {
-  .slider {
+  .globelet {
     --infowidth: 100%;
     --xslide: 0px;
     --menuheight: 50vh;
     --yslide: 50vh;
   }
 }
-.slider * {
+.globelet * {
   box-sizing: border-box;
 }
-.slider div {
+.globelet div {
   transition: 0.33s;
 }
-.slider button {
+.globelet button {
   background: transparent;
   border: none;
   padding: 8px;
@@ -28,24 +28,24 @@
   -webkit-appearance: none;
   touch-action: manipulation;
 }
-.slider button svg {
+.globelet button svg {
   touch-action: manipulation;
 }
-.slider canvas.map {
+.globelet canvas.map {
   width: 100%;
   height: 100%;
   display: inline-block;
   position: absolute;
   padding: 0;
 }
-.slider .sprite {
+.globelet .sprite {
   width: 0;
   height: 0;
   position: absolute;
   visibility: hidden;
   display: none;
 }
-.slider .settings {
+.globelet .settings {
   position: absolute;
   width: var(--settingwidth);
   height: 100%;
@@ -53,14 +53,17 @@
   visibility: hidden; /* Hide from tab navigation when offscreen */
   z-index: 2;
 }
-.slider .main {
+.globelet .main {
   width: 100%;
   height: 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: #404542;
 }
-.slider .shifted {
+.globelet .shifted {
   transform: translate(calc(0px - var(--xslide) / 2), calc(0px - var(--yslide) / 2));
 }
-.slider .infobox {
+.globelet .infobox {
   position: absolute;
   bottom: 0;
   right: 0;
@@ -70,11 +73,11 @@
   visibility: hidden; /* Hide from tab navigation when offscreen */
   z-index: 1;
 }
-.slider .slid {
+.globelet .slid {
   visibility: visible;
   transform: translate(0px);
 }
-.slider .status {
+.globelet .status {
   position: absolute;
   bottom: 0;
   right: 0;
@@ -85,23 +88,23 @@
   padding: 0.2em;
   z-index: 1;
 }
-.slider .icon {
+.globelet .icon {
   width: 20px;
   height: 20px;
 }
-.slider .stroke {
+.globelet .stroke {
   stroke: grey;
   stroke-width: 2;
 }
-.slider .stroke:hover {
+.globelet .stroke:hover {
   stroke: black;
 }
-.slider .close-button {
+.globelet .close-button {
   position: absolute;
   top: 0;
   right: 0;
 }
-.slider .marker {
+.globelet .marker {
   display: inline-block;
   position: absolute;
   z-index: 1;
@@ -110,7 +113,7 @@
   transform: translate(-50%, -96%);
   stroke: white;
 }
-.slider .spot {
+.globelet .spot {
   display: inline-block;
   position: absolute;
   z-index: 1;

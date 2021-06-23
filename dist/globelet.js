@@ -540,17 +540,26 @@ var sprite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" clas
 `;
 
 function setParams$2(userParams) {
+  // Get the containing DIV element, and set its CSS class
   const container = document.getElementById(userParams.container);
+  container.classList.add("globelet");
 
-  // Append svg sprite for later reference from 'use' elements
-  container.insertAdjacentHTML('afterbegin', sprite);
+  // Add Elements for globe interface, svg sprite, status bar, canvas
+  const globeDiv = addChild("div", "main", container);
+  globeDiv.id = "globe"; // TEMPORARY: For backwards compatibility
+  globeDiv.insertAdjacentHTML('afterbegin', sprite);
+  const toolTip = addChild("div", "status", globeDiv);
+  const canvas = addChild("canvas", "map", globeDiv);
+
+  // Get a WebGL context and add yawgl functionality
+  const gl = getExtendedContext(canvas);
+  const context = initContext(gl);
 
   // Get user-supplied parameters
   const {
     style, mapboxToken,
-    width: rawWidth = container.clientWidth + 512,
-    height: rawHeight = container.clientHeight + 512,
-    toolTip,
+    width: rawWidth = globeDiv.clientWidth + 512,
+    height: rawHeight = globeDiv.clientHeight + 512,
     center = [0.0, 0.0],
     altitude = 20000,
   } = userParams;
@@ -560,20 +569,18 @@ function setParams$2(userParams) {
   const height = nextPowerOf2(rawHeight);
   const width = Math.max(nextPowerOf2(rawWidth), height);
 
-  // Create a Canvas with a WebGL context
-  const canvas = document.createElement('canvas');
-  canvas.className = "map";
-  container.appendChild(canvas);
-  const gl = getExtendedContext(canvas);
-  const context = initContext(gl);
-
-  return {
-    style, mapboxToken, version,
+  return { version,
+    style, mapboxToken,
     width, height,
-    container, context,
-    toolTip: document.getElementById(toolTip),
+    globeDiv, context, toolTip,
     center, altitude,
   };
+
+  function addChild(tagName, className, parentElement) {
+    const child = document.createElement(tagName);
+    child.className = className;
+    return parentElement.appendChild(child);
+  }
 }
 
 // Maximum latitude for Web Mercator: 85.0113 degrees. Beware rounding!
@@ -11623,7 +11630,7 @@ function initMarkers(globe, container) {
       : createSVG(type);
   }
 
-  function createSVG(type) {
+  function createSVG(type = "marker") {
     const svgNS = "http://www.w3.org/2000/svg";
 
     const svg = document.createElementNS(svgNS, "svg");
@@ -11668,14 +11675,14 @@ function initGlobe(userParams) {
 function setup(map, params) {
   var requestID;
 
-  const ball = init$1(params.container, params.center, params.altitude);
+  const ball = init$1(params.globeDiv, params.center, params.altitude);
   const satView = init({
     context: params.context,
     globeRadius: ball.radius(),
     map: map.texture,
     flipY: false,
   });
-  const markers = initMarkers(ball, params.container);
+  const markers = initMarkers(ball, params.globeDiv);
 
   return {
     mapLoaded: map.loaded,
@@ -11696,7 +11703,7 @@ function setup(map, params) {
     addMarker: markers.add,
     removeMarker: markers.remove,
 
-    destroy: satView.destroy,
+    destroy: () => (satView.destroy(), params.globeDiv.remove()),
     breakLoop: 0,
   };
 

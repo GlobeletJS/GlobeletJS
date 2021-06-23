@@ -9,12 +9,7 @@ body {
   touch-action: none;
   overscroll-behavior: none;
 }
-.slider .main {
-  background-color: #404542;
-  position: relative;
-  overflow: hidden;
-}
-.slider .spot {
+.globelet .spot {
   width: 18px;
   height: 18px;
 }
