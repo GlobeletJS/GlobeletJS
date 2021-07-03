@@ -10,8 +10,7 @@ export function initGlobe(userParams) {
   const params = setParams(userParams);
 
   return initMap(params)
-    .then(map => setup(map, params))
-    .catch(console.log);
+    .then(map => setup(map, params));
 }
 
 function setup(map, params) {

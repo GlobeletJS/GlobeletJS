@@ -542,7 +542,7 @@ var globeletjs = (function (exports) {
 </svg>
 `;
 
-  function setParams$2(userParams) {
+  function setParams$3(userParams) {
     // Get the containing DIV element, and set its CSS class
     const container = document.getElementById(userParams.container);
     container.classList.add("globelet");
@@ -794,7 +794,7 @@ vec4 mapToClip(vec2 mapPos, float z) {
 }
 `;
 
-  var vert = `attribute vec2 quadPos; // Vertices of the quad instance
+  var vert$3 = `attribute vec2 quadPos; // Vertices of the quad instance
 attribute vec2 circlePos;
 attribute float radius;
 attribute vec4 color;
@@ -819,7 +819,7 @@ void main() {
 }
 `;
 
-  var frag = `precision mediump float;
+  var frag$3 = `precision mediump float;
 
 varying vec2 delta;
 varying vec4 strokeStyle;
@@ -919,7 +919,7 @@ void main() {
   function initCircle(context, framebufferSize, preamble) {
     const { initProgram, initQuad, initAttribute } = context;
 
-    const program = initProgram(preamble + vert, frag);
+    const program = initProgram(preamble + vert$3, frag$3);
     const { use, uniformSetters, constructVao } = program;
 
     const grid = initGrid(framebufferSize, use, uniformSetters);
@@ -960,7 +960,7 @@ void main() {
     return { load, initPainter };
   }
 
-  var vert$1 = `attribute vec2 quadPos;
+  var vert$2 = `attribute vec2 quadPos;
 attribute vec3 pointA, pointB, pointC, pointD;
 attribute vec4 color;
 attribute float opacity;
@@ -1038,7 +1038,7 @@ void main() {
 }
 `;
 
-  var frag$1 = `precision highp float;
+  var frag$2 = `precision highp float;
 
 uniform float lineWidth;
 
@@ -1117,7 +1117,7 @@ void main() {
   }
 
   function initLine(context, framebufferSize, preamble) {
-    const program = context.initProgram(preamble + vert$1, frag$1);
+    const program = context.initProgram(preamble + vert$2, frag$2);
     const { use, uniformSetters, constructVao } = program;
 
     const grid = initGrid(framebufferSize, use, uniformSetters);
@@ -1147,7 +1147,7 @@ void main() {
     return { load, initPainter };
   }
 
-  var vert$2 = `attribute vec2 position;
+  var vert$1 = `attribute vec2 position;
 attribute vec4 color;
 attribute float opacity;
 
@@ -1164,7 +1164,7 @@ void main() {
 }
 `;
 
-  var frag$2 = `precision mediump float;
+  var frag$1 = `precision mediump float;
 
 varying vec4 fillStyle;
 
@@ -1199,7 +1199,7 @@ void main() {
   }
 
   function initFill(context, framebufferSize, preamble) {
-    const program = context.initProgram(preamble + vert$2, frag$2);
+    const program = context.initProgram(preamble + vert$1, frag$1);
     const { use, uniformSetters, constructVao } = program;
     const grid = initGrid(framebufferSize, use, uniformSetters);
 
@@ -1220,7 +1220,7 @@ void main() {
     return { load, initPainter };
   }
 
-  var vert$3 = `attribute vec2 quadPos;  // Vertices of the quad instance
+  var vert = `attribute vec2 quadPos;  // Vertices of the quad instance
 attribute vec2 labelPos; // x, y
 attribute vec3 charPos;  // dx, dy, scale (relative to labelPos)
 attribute vec4 sdfRect;  // x, y, w, h
@@ -1244,7 +1244,7 @@ void main() {
 }
 `;
 
-  var frag$3 = `precision highp float;
+  var frag = `precision highp float;
 
 uniform sampler2D sdf;
 uniform vec2 sdfDim;
@@ -1292,7 +1292,7 @@ void main() {
   }
 
   function initText(context, framebufferSize, preamble) {
-    const program = context.initProgram(preamble + vert$3, frag$3);
+    const program = context.initProgram(preamble + vert, frag);
     const { use, uniformSetters, constructVao } = program;
     const grid = initGrid(framebufferSize, use, uniformSetters);
 
@@ -1413,7 +1413,7 @@ void main() {
   function setParams$1(userParams) {
     const gl = userParams.context.gl;
     if (!(gl instanceof WebGLRenderingContext)) {
-      fail("no valid WebGL context");
+      fail$1("no valid WebGL context");
     }
 
     const {
@@ -1429,28 +1429,28 @@ void main() {
 
     const { buffer, size } = framebuffer;
     if (!(buffer instanceof WebGLFramebuffer) && buffer !== null) {
-      fail("no valid framebuffer");
+      fail$1("no valid framebuffer");
     }
 
     if (!size || !allPosInts(size.width, size.height)) {
-      fail("invalid size object");
+      fail$1("invalid size object");
     }
 
     if (!Array.isArray(center) || center.length < 2) {
-      fail("invalid center coordinates");
+      fail$1("invalid center coordinates");
     }
 
     if (!Number.isFinite(zoom)) {
-      fail("invalid zoom value");
+      fail$1("invalid zoom value");
     }
 
     const validUnits = ["degrees", "radians", "xy"];
-    if (!validUnits.includes(units)) fail("invalid units");
+    if (!validUnits.includes(units)) fail$1("invalid units");
     const projection = getProjection(units);
 
     // Convert initial center position from degrees to the specified units
     const projCenter = getProjection("degrees").forward(center);
-    if (!all0to1(...projCenter)) fail ("invalid center coordinates");
+    if (!all0to1(...projCenter)) fail$1 ("invalid center coordinates");
     const invCenter = projection.inverse(projCenter);
 
     return {
@@ -1463,7 +1463,7 @@ void main() {
     };
   }
 
-  function fail(message) {
+  function fail$1(message) {
     throw Error("tile-setter parameter check: " + message + "!");
   }
 
@@ -1476,24 +1476,24 @@ void main() {
   }
 
   function expandStyleURL(url, token) {
-    var prefix = /^mapbox:\/\/styles\//;
+    const prefix = /^mapbox:\/\/styles\//;
     if ( !url.match(prefix) ) return url;
-    var apiRoot = "https://api.mapbox.com/styles/v1/";
+    const apiRoot = "https://api.mapbox.com/styles/v1/";
     return url.replace(prefix, apiRoot) + "?access_token=" + token;
   }
 
   function expandSpriteURLs(url, token) {
     // Returns an array containing urls to .png and .json files
-    var prefix = /^mapbox:\/\/sprites\//;
+    const prefix = /^mapbox:\/\/sprites\//;
     if ( !url.match(prefix) ) return {
       image: url + ".png", 
       meta: url + ".json",
     };
 
     // We have a Mapbox custom url. Expand to an absolute URL, as per the spec
-    var apiRoot = "https://api.mapbox.com/styles/v1/";
+    const apiRoot = "https://api.mapbox.com/styles/v1/";
     url = url.replace(prefix, apiRoot) + "/sprite";
-    var tokenString = "?access_token=" + token;
+    const tokenString = "?access_token=" + token;
     return {
       image: url + ".png" + tokenString, 
       meta: url + ".json" + tokenString,
@@ -1501,50 +1501,57 @@ void main() {
   }
 
   function expandTileURL(url, token) {
-    var prefix = /^mapbox:\/\//;
+    const prefix = /^mapbox:\/\//;
     if ( !url.match(prefix) ) return url;
-    var apiRoot = "https://api.mapbox.com/v4/";
+    const apiRoot = "https://api.mapbox.com/v4/";
     return url.replace(prefix, apiRoot) + ".json?secure&access_token=" + token;
   }
 
   function expandGlyphURL(url, token) {
-    var prefix = /^mapbox:\/\/fonts\//;
+    const prefix = /^mapbox:\/\/fonts\//;
     if ( !url.match(prefix) ) return url;
-    var apiRoot = "https://api.mapbox.com/fonts/v1/";
+    const apiRoot = "https://api.mapbox.com/fonts/v1/";
     return url.replace(prefix, apiRoot) + "?access_token=" + token;
   }
 
-  function getJSON(data) {
-    switch (typeof data) {
-      case "object":
-        // data may be GeoJSON already. Confirm and return
-        return (data !== null && data.type)
-          ? Promise.resolve(data)
-          : Promise.reject(data);
+  function getGeoJSON(data) {
+    const dataPromise = (typeof data === "object" && data !== null)
+      ? Promise.resolve(data)
+      : getJSON(data); // data may be a URL. Try loading it
 
-      case "string":
-        // data must be a URL
-        return fetch(data).then(response => {
-          return (response.ok)
-            ? response.json()
-            : Promise.reject(response);
-        });
+    return dataPromise.then(json => {
+      // Is it valid GeoJSON? For now, just check for a .type property
+      return (json.type)
+        ? json
+        : Promise.reject(Error("invalid GeoJSON: " + JSON.stringify(json)));
+    });
+  }
 
-      default:
-        return Promise.reject(data);
+  function getJSON(href) {
+    return (typeof href === "string" && href.length)
+      ? fetch(href).then(checkFetch)
+      : Promise.reject(Error("invalid URL: " + JSON.stringify(href)));
+  }
+
+  function checkFetch(response) {
+    if (!response.ok) {
+      const { status, statusText, url } = response;
+      const message = ["HTTP", status, statusText, "for URL", url].join(" ");
+      return Promise.reject(Error(message));
     }
+
+    return response.json();
   }
 
   function getImage(href) {
-    const errMsg = "ERROR in getImage for href " + href;
     const img = new Image();
 
     return new Promise( (resolve, reject) => {
-      img.onerror = () => reject(errMsg);
+      img.onerror = () => reject(Error("Failed to retrieve image from " + href));
 
       img.onload = () => (img.complete && img.naturalWidth !== 0)
           ? resolve(img)
-          : reject(errMsg);
+          : reject(Error("Incomplete image received from " + href));
 
       img.crossOrigin = "anonymous";
       img.src = href;
@@ -2275,18 +2282,18 @@ void main() {
   }
 
   function loadLinks(styleDoc, mapboxToken) {
-    styleDoc.layers = derefLayers(styleDoc.layers);
-    if (styleDoc.glyphs) {
-      styleDoc.glyphs = expandGlyphURL(styleDoc.glyphs, mapboxToken);
+    const { sources: rawSources, glyphs, sprite, layers } = styleDoc;
+
+    styleDoc.layers = derefLayers(layers);
+    if (glyphs) {
+      styleDoc.glyphs = expandGlyphURL(glyphs, mapboxToken);
     }
 
     return Promise.all([
-      expandSources(styleDoc.sources, mapboxToken),
-      loadSprite(styleDoc.sprite, mapboxToken),
-    ]).then( ([sources, spriteData]) => {
-      styleDoc.sources = sources;
-      styleDoc.spriteData = spriteData;
-      return styleDoc;
+      expandSources(rawSources, mapboxToken),
+      loadSprite(sprite, mapboxToken),
+    ]).then(([sources, spriteData]) => {
+      return Object.assign(styleDoc, { sources, spriteData });
     });
   }
 
@@ -2294,30 +2301,34 @@ void main() {
     const expandPromises = Object.entries(rawSources).map(expandSource);
 
     function expandSource([key, source]) {
-      if (source.type === "geojson") {
-        return getJSON(source.data).then(JSON => {
-          source.data = JSON;
-          return [key, source];
-        });
+      const { type, url } = source;
+
+      const infoPromise =
+        (type === "geojson") ? getGeoJSON(source.data).then(data => ({ data }))
+        : (url) ? getJSON(expandTileURL(url, token)) // Get linked TileJSON
+        : Promise.resolve({}); // No linked info
+
+      return infoPromise.then(info => {
+        // Assign everything to a new object for return.
+        // Note: shallow copy! Some properties may point back to the original
+        // style document, like .vector_layers, .bounds, .center, .extent
+        const updatedSource = Object.assign({}, source, info, { type });
+        return { [key]: updatedSource };
+      });
+    }
+
+    return Promise.allSettled(expandPromises)
+      .then(results => results.reduce(processResult, {}));
+
+    function processResult(sources, result) {
+      if (result.status === "fulfilled") {
+        return Object.assign(sources, result.value);
+      } else {
+        // If one source fails to load, just log the reason and move on
+        warn("Error loading sources: " + result.reason.message);
+        return sources;
       }
-
-      // If no .url, return a shallow copy of the input. 
-      // Note: some properties may still be pointing back to the original 
-      // style document, like .vector_layers, .bounds, .center, .extent
-      if (source.url === undefined) return [key, Object.assign({}, source)];
-
-      // Load the referenced TileJSON document, add any values from source
-      return getJSON( expandTileURL(source.url, token) )
-        .then( tileJson => [key, Object.assign(tileJson, source)] );
     }
-
-    function combineSources(keySourcePairs) {
-      const sources = {};
-      keySourcePairs.forEach( ([key, val]) => { sources[key] = val; } );
-      return sources;
-    }
-
-    return Promise.all( expandPromises ).then( combineSources );
   }
 
   function loadSprite(sprite, token) {
@@ -2326,7 +2337,17 @@ void main() {
     const urls = expandSpriteURLs(sprite, token);
 
     return Promise.all([getImage(urls.image), getJSON(urls.meta)])
-      .then( ([image, meta]) => ({ image, meta }) );
+      .then( ([image, meta]) => ({ image, meta }) )
+      .catch(err => {
+        // If sprite doesn't load, just log the error and move on
+        warn("Error loading sprite: " + err.message);
+      });
+  }
+
+  function warn(message) {
+    console.log("tile-stencil had a problem loading part of the style document");
+    console.log("  " + message);
+    console.log("  Not a fatal error. Proceeding with the rest of the style...");
   }
 
   function getStyleFuncs(inputLayer) {
@@ -2346,13 +2367,28 @@ void main() {
       ? Promise.resolve(style)                // style is JSON already
       : getJSON( expandStyleURL(style, mapboxToken) ); // Get from URL
 
-    return getStyle
+    return getStyle.then(checkStyle)
       .then( styleDoc => loadLinks(styleDoc, mapboxToken) );
   }
 
-  initZeroTimeouts();
+  function checkStyle(doc) {
+    const { version, sources, layers } = doc;
 
-  function initZeroTimeouts() {
+    const error =
+      (typeof sources !== "object" || sources === null || Array.isArray(sources))
+      ? "missing sources object"
+      : (!Array.isArray(layers))
+      ? "missing layers array"
+      : (version !== 8)
+      ? "unsupported version number"
+      : null;
+
+    return (error) ? Promise.reject(error) : doc;
+  }
+
+  initZeroTimeouts$1();
+
+  function initZeroTimeouts$1() {
     // setTimeout with true zero delay. https://github.com/GlobeletJS/zero-timeout
     const timeouts = [];
     var taskId = 0;
@@ -2447,9 +2483,9 @@ void main() {
     }
   }
 
-  initZeroTimeouts$1();
+  initZeroTimeouts();
 
-  function initZeroTimeouts$1() {
+  function initZeroTimeouts() {
     // setTimeout with true zero delay. https://github.com/GlobeletJS/zero-timeout
     const timeouts = [];
     var taskId = 0;
@@ -2546,7 +2582,7 @@ void main() {
 
   const vectorTypes = ["symbol", "circle", "line", "fill"];
 
-  function setParams$1$1(userParams) {
+  function setParams$2(userParams) {
     const {
       threads = 2,
       context,
@@ -2558,18 +2594,18 @@ void main() {
     } = userParams;
 
     // Confirm supplied styles are all vector layers reading from the same source
-    if (!layers || !layers.length) fail$1("no valid array of style layers!");
+    if (!layers || !layers.length) fail("no valid array of style layers!");
 
     let allVectors = layers.every( l => vectorTypes.includes(l.type) );
-    if (!allVectors) fail$1("not all layers are vector types!");
+    if (!allVectors) fail("not all layers are vector types!");
 
     let sameSource = layers.every( l => l.source === layers[0].source );
-    if (!sameSource) fail$1("supplied layers use different sources!");
+    if (!sameSource) fail("supplied layers use different sources!");
 
-    if (!source) fail$1("parameters.source is required!");
+    if (!source) fail("parameters.source is required!");
 
     if (source.type === "vector" && !(source.tiles && source.tiles.length)) {
-      fail$1("no valid vector tile endpoints!");
+      fail("no valid vector tile endpoints!");
     }
 
     return {
@@ -2583,7 +2619,7 @@ void main() {
     };
   }
 
-  function fail$1(message) {
+  function fail(message) {
     throw Error("ERROR in tile-mixer: " + message);
   }
 
@@ -2668,7 +2704,7 @@ void main() {
   prototype.constructor = constructor;
 }
 
-function extend(parent, definition) {
+function extend$2(parent, definition) {
   var prototype = Object.create(parent.prototype);
   for (var key in definition) prototype[key] = definition[key];
   return prototype;
@@ -2913,7 +2949,7 @@ function Rgb(r, g, b, opacity) {
   this.opacity = +opacity;
 }
 
-define(Rgb, rgb, extend(Color, {
+define(Rgb, rgb, extend$2(Color, {
   brighter: function(k) {
     k = k == null ? brighter : Math.pow(brighter, k);
     return new Rgb(this.r * k, this.g * k, this.b * k, this.opacity);
@@ -2999,7 +3035,7 @@ function Hsl(h, s, l, opacity) {
   this.opacity = +opacity;
 }
 
-define(Hsl, hsl, extend(Color, {
+define(Hsl, hsl, extend$2(Color, {
   brighter: function(k) {
     k = k == null ? brighter : Math.pow(brighter, k);
     return new Hsl(this.h, this.s, this.l * k, this.opacity);
@@ -3333,19 +3369,9 @@ const paintDefaults = {
   },
 };
 
-function getStyleFuncs(inputLayer) {
-  const layer = Object.assign({}, inputLayer); // Leave input unchanged
-
-  // Replace rendering properties with functions
-  layer.layout = autoGetters(layer.layout, layoutDefaults[layer.type]);
-  layer.paint  = autoGetters(layer.paint,  paintDefaults[layer.type] );
-
-  return layer;
-}
-
 function buildFeatureFilter(filterObj) {
   // filterObj is a filter definition following the "deprecated" syntax:
-  // https://docs.mapbox.com/mapbox-gl-js/style-spec/#other-filter
+  // https://maplibre.org/maplibre-gl-js-docs/style-spec/other/#other-filter
   if (!filterObj) return () => true;
   const [type, ...vals] = filterObj;
 
@@ -3423,6 +3449,16 @@ function initFeatureValGetter(key) {
   }
 }
 
+function getStyleFuncs(inputLayer) {
+  const layer = Object.assign({}, inputLayer); // Leave input unchanged
+
+  // Replace rendering properties with functions
+  layer.layout = autoGetters(layer.layout, layoutDefaults[layer.type]);
+  layer.paint  = autoGetters(layer.paint,  paintDefaults[layer.type] );
+
+  return layer;
+}
+
 function initSourceFilter(styles) {
   const filters = styles.map(initLayerFilter);
 
@@ -3474,8 +3510,11 @@ function getGeomFilter(type) {
   }
 }
 
+var ieee754$1 = {};
+
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
-var read = function (buffer, offset, isLE, mLen, nBytes) {
+
+ieee754$1.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m;
   var eLen = (nBytes * 8) - mLen - 1;
   var eMax = (1 << eLen) - 1;
@@ -3508,7 +3547,7 @@ var read = function (buffer, offset, isLE, mLen, nBytes) {
   return (s ? -1 : 1) * m * Math.pow(2, e - mLen)
 };
 
-var write = function (buffer, value, offset, isLE, mLen, nBytes) {
+ieee754$1.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   var e, m, c;
   var eLen = (nBytes * 8) - mLen - 1;
   var eMax = (1 << eLen) - 1;
@@ -3560,14 +3599,9 @@ var write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128;
 };
 
-var ieee754 = {
-	read: read,
-	write: write
-};
-
 var pbf = Pbf;
 
-
+var ieee754 = ieee754$1;
 
 function Pbf(buf) {
     this.buf = ArrayBuffer.isView && ArrayBuffer.isView(buf) ? buf : new Uint8Array(buf || 0);
@@ -4291,7 +4325,7 @@ function outOfRange(point, size, image) {
   );
 }
 
-const GLYPH_PBF_BORDER = 3;
+const GLYPH_PBF_BORDER$1 = 3;
 
 function parseGlyphPbf(data) {
   // See mapbox-gl-js/src/style/parse_glyph_pbf.js
@@ -4309,7 +4343,7 @@ function readFontstack(tag, glyphs, pbf) {
   const glyph = pbf.readMessage(readGlyph, {});
   const { id, bitmap, width, height, left, top, advance } = glyph;
 
-  const borders = 2 * GLYPH_PBF_BORDER;
+  const borders = 2 * GLYPH_PBF_BORDER$1;
   const size = { width: width + borders, height: height + borders };
 
   glyphs.push({
@@ -4459,7 +4493,7 @@ function potpack(boxes) {
     };
 }
 
-const ATLAS_PADDING = 1;
+const ATLAS_PADDING$1 = 1;
 
 function buildAtlas(fonts) {
   // See mapbox-gl-js/src/render/glyph_atlas.js
@@ -4501,8 +4535,8 @@ function getPosition(glyph) {
   if (width === 0 || height === 0) return;
 
   // Construct a preliminary rect, positioned at the origin for now
-  let w = width + 2 * ATLAS_PADDING;
-  let h = height + 2 * ATLAS_PADDING;
+  let w = width + 2 * ATLAS_PADDING$1;
+  let h = height + 2 * ATLAS_PADDING$1;
   let rect = { x: 0, y: 0, w, h };
 
   return { metrics, rect };
@@ -4515,7 +4549,7 @@ function copyGlyphBitmap(glyph, positions, image) {
 
   let srcPt = { x: 0, y: 0 };
   let { x, y } = position.rect;
-  let dstPt = { x: x + ATLAS_PADDING, y: y + ATLAS_PADDING };
+  let dstPt = { x: x + ATLAS_PADDING$1, y: y + ATLAS_PADDING$1 };
   AlphaImage.copy(bitmap, image, srcPt, dstPt, bitmap);
 }
 
@@ -4761,8 +4795,10 @@ function flattenLinearRing(ring) {
   ];
 }
 
-var earcut_1 = earcut;
-var default_1 = earcut;
+var earcut$2 = {exports: {}};
+
+earcut$2.exports = earcut;
+earcut$2.exports.default = earcut;
 
 function earcut(data, holeIndices, dim) {
 
@@ -4807,7 +4843,7 @@ function earcut(data, holeIndices, dim) {
 function linkedList(data, start, end, dim, clockwise) {
     var i, last;
 
-    if (clockwise === (signedArea(data, start, end, dim) > 0)) {
+    if (clockwise === (signedArea$1(data, start, end, dim) > 0)) {
         for (i = start; i < end; i += dim) last = insertNode(i, data[i], data[i + 1], last);
     } else {
         for (i = end - dim; i >= start; i -= dim) last = insertNode(i, data[i], data[i + 1], last);
@@ -4977,7 +5013,7 @@ function cureLocalIntersections(start, triangles, dim) {
         var a = p.prev,
             b = p.next.next;
 
-        if (!equals(a, b) && intersects(a, p, p.next, b) && locallyInside(a, b) && locallyInside(b, a)) {
+        if (!equals(a, b) && intersects$1(a, p, p.next, b) && locallyInside(a, b) && locallyInside(b, a)) {
 
             triangles.push(a.i / dim);
             triangles.push(p.i / dim);
@@ -5252,7 +5288,7 @@ function equals(p1, p2) {
 }
 
 // check if two segments intersect
-function intersects(p1, q1, p2, q2) {
+function intersects$1(p1, q1, p2, q2) {
     var o1 = sign(area(p1, q1, p2));
     var o2 = sign(area(p1, q1, q2));
     var o3 = sign(area(p2, q2, p1));
@@ -5282,7 +5318,7 @@ function intersectsPolygon(a, b) {
     var p = a;
     do {
         if (p.i !== a.i && p.next.i !== a.i && p.i !== b.i && p.next.i !== b.i &&
-                intersects(p, p.next, a, b)) return true;
+                intersects$1(p, p.next, a, b)) return true;
         p = p.next;
     } while (p !== a);
 
@@ -5389,12 +5425,12 @@ earcut.deviation = function (data, holeIndices, dim, triangles) {
     var hasHoles = holeIndices && holeIndices.length;
     var outerLen = hasHoles ? holeIndices[0] * dim : data.length;
 
-    var polygonArea = Math.abs(signedArea(data, 0, outerLen, dim));
+    var polygonArea = Math.abs(signedArea$1(data, 0, outerLen, dim));
     if (hasHoles) {
         for (var i = 0, len = holeIndices.length; i < len; i++) {
             var start = holeIndices[i] * dim;
             var end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
-            polygonArea -= Math.abs(signedArea(data, start, end, dim));
+            polygonArea -= Math.abs(signedArea$1(data, start, end, dim));
         }
     }
 
@@ -5412,7 +5448,7 @@ earcut.deviation = function (data, holeIndices, dim, triangles) {
         Math.abs((trianglesArea - polygonArea) / polygonArea);
 };
 
-function signedArea(data, start, end, dim) {
+function signedArea$1(data, start, end, dim) {
     var sum = 0;
     for (var i = start, j = end - dim; i < end; i += dim) {
         sum += (data[j] - data[i]) * (data[i + 1] + data[j + 1]);
@@ -5438,7 +5474,8 @@ earcut.flatten = function (data) {
     }
     return result;
 };
-earcut_1.default = default_1;
+
+var earcut$1 = earcut$2.exports;
 
 function initFillParsing(style) {
   const { paint } = style;
@@ -5488,17 +5525,17 @@ function triangulate(geometry) {
 }
 
 function indexPolygon(coords) {
-  let { vertices, holes, dimensions } = earcut_1.flatten(coords);
-  let indices = earcut_1(vertices, holes, dimensions);
+  let { vertices, holes, dimensions } = earcut$1.flatten(coords);
+  let indices = earcut$1(vertices, holes, dimensions);
   return { vertices, indices };
 }
 
-const GLYPH_PBF_BORDER$1 = 3;
+const GLYPH_PBF_BORDER = 3;
 const ONE_EM = 24;
 
-const ATLAS_PADDING$1 = 1;
+const ATLAS_PADDING = 1;
 
-const RECT_BUFFER = GLYPH_PBF_BORDER$1 + ATLAS_PADDING$1;
+const RECT_BUFFER = GLYPH_PBF_BORDER + ATLAS_PADDING;
 
 function layoutLine(glyphs, origin, spacing, scalar) {
   var xCursor = origin[0];
@@ -5952,7 +5989,7 @@ class RBush {
         let node = this.data;
         const result = [];
 
-        if (!intersects$1(bbox, node)) return result;
+        if (!intersects(bbox, node)) return result;
 
         const toBBox = this.toBBox;
         const nodesToSearch = [];
@@ -5962,7 +5999,7 @@ class RBush {
                 const child = node.children[i];
                 const childBBox = node.leaf ? toBBox(child) : child;
 
-                if (intersects$1(bbox, childBBox)) {
+                if (intersects(bbox, childBBox)) {
                     if (node.leaf) result.push(child);
                     else if (contains(bbox, childBBox)) this._all(child, result);
                     else nodesToSearch.push(child);
@@ -5977,7 +6014,7 @@ class RBush {
     collides(bbox) {
         let node = this.data;
 
-        if (!intersects$1(bbox, node)) return false;
+        if (!intersects(bbox, node)) return false;
 
         const nodesToSearch = [];
         while (node) {
@@ -5985,7 +6022,7 @@ class RBush {
                 const child = node.children[i];
                 const childBBox = node.leaf ? this.toBBox(child) : child;
 
-                if (intersects$1(bbox, childBBox)) {
+                if (intersects(bbox, childBBox)) {
                     if (node.leaf || contains(bbox, childBBox)) return true;
                     nodesToSearch.push(child);
                 }
@@ -6123,7 +6160,7 @@ class RBush {
         if (N <= M) {
             // reached leaf level; return leaf
             node = createNode(items.slice(left, right + 1));
-            calcBBox(node, this.toBBox);
+            calcBBox$1(node, this.toBBox);
             return node;
         }
 
@@ -6161,7 +6198,7 @@ class RBush {
             }
         }
 
-        calcBBox(node, this.toBBox);
+        calcBBox$1(node, this.toBBox);
 
         return node;
     }
@@ -6239,8 +6276,8 @@ class RBush {
         newNode.height = node.height;
         newNode.leaf = node.leaf;
 
-        calcBBox(node, this.toBBox);
-        calcBBox(newNode, this.toBBox);
+        calcBBox$1(node, this.toBBox);
+        calcBBox$1(newNode, this.toBBox);
 
         if (level) insertPath[level - 1].children.push(newNode);
         else this._splitRoot(node, newNode);
@@ -6251,7 +6288,7 @@ class RBush {
         this.data = createNode([node, newNode]);
         this.data.height = node.height + 1;
         this.data.leaf = false;
-        calcBBox(this.data, this.toBBox);
+        calcBBox$1(this.data, this.toBBox);
     }
 
     _chooseSplitIndex(node, m, M) {
@@ -6338,7 +6375,7 @@ class RBush {
 
                 } else this.clear();
 
-            } else calcBBox(path[i], this.toBBox);
+            } else calcBBox$1(path[i], this.toBBox);
         }
     }
 }
@@ -6353,7 +6390,7 @@ function findItem(item, items, equalsFn) {
 }
 
 // calculate node's bbox from bboxes of its children
-function calcBBox(node, toBBox) {
+function calcBBox$1(node, toBBox) {
     distBBox(node, 0, node.children.length, toBBox, node);
 }
 
@@ -6409,7 +6446,7 @@ function contains(a, b) {
            b.maxY <= a.maxY;
 }
 
-function intersects$1(a, b) {
+function intersects(a, b) {
     return b.minX <= a.maxX &&
            b.minY <= a.maxY &&
            b.maxX >= a.minX &&
@@ -6521,7 +6558,7 @@ function classifyRings(rings) {
   var polygon, ccw;
 
   rings.forEach(ring => {
-    let area = signedArea$1(ring);
+    let area = signedArea(ring);
     if (area === 0) return;
 
     if (ccw === undefined) ccw = area < 0;
@@ -6539,7 +6576,7 @@ function classifyRings(rings) {
   return polygons;
 }
 
-function signedArea$1(ring) {
+function signedArea(ring) {
   const xmul = (p1, p2) => (p2.x - p1.x) * (p1.y + p2.y);
 
   const initialValue = xmul(ring[0], ring[ring.length - 1]);
@@ -6935,11 +6972,11 @@ function createFeature(id, type, geom, tags) {
         maxX: -Infinity,
         maxY: -Infinity
     };
-    calcBBox$1(feature);
+    calcBBox(feature);
     return feature;
 }
 
-function calcBBox$1(feature) {
+function calcBBox(feature) {
     var geom = feature.geometry;
     var type = feature.type;
 
@@ -7555,7 +7592,7 @@ function geojsonvt(data, options) {
 }
 
 function GeoJSONVT(data, options) {
-    options = this.options = extend$2(Object.create(this.options), options);
+    options = this.options = extend(Object.create(this.options), options);
 
     var debug = options.debug;
 
@@ -7739,7 +7776,7 @@ function toID(z, x, y) {
     return (((1 << z) * y + x) * 32) + z;
 }
 
-function extend$2(dest, src) {
+function extend(dest, src) {
     for (var i in src) dest[i] = src[i];
     return dest;
 }
@@ -7848,7 +7885,7 @@ function sendTile(id, tile) {
 `;
 
   function initTileMixer(userParams) {
-    const params = setParams$1$1(userParams);
+    const params = setParams$2(userParams);
     const { queue, context: { loadBuffers, loadAtlas } } = params;
 
     // Initialize workers
@@ -8365,790 +8402,6 @@ function sendTile(id, tile) {
     }
   }
 
-  function unwrapExports (x) {
-  	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
-  }
-
-  function createCommonjsModule(fn, module) {
-  	return module = { exports: {} }, fn(module, module.exports), module.exports;
-  }
-
-  var helpers = createCommonjsModule(function (module, exports) {
-  Object.defineProperty(exports, "__esModule", { value: true });
-  /**
-   * @module helpers
-   */
-  /**
-   * Earth Radius used with the Harvesine formula and approximates using a spherical (non-ellipsoid) Earth.
-   *
-   * @memberof helpers
-   * @type {number}
-   */
-  exports.earthRadius = 6371008.8;
-  /**
-   * Unit of measurement factors using a spherical (non-ellipsoid) earth radius.
-   *
-   * @memberof helpers
-   * @type {Object}
-   */
-  exports.factors = {
-      centimeters: exports.earthRadius * 100,
-      centimetres: exports.earthRadius * 100,
-      degrees: exports.earthRadius / 111325,
-      feet: exports.earthRadius * 3.28084,
-      inches: exports.earthRadius * 39.370,
-      kilometers: exports.earthRadius / 1000,
-      kilometres: exports.earthRadius / 1000,
-      meters: exports.earthRadius,
-      metres: exports.earthRadius,
-      miles: exports.earthRadius / 1609.344,
-      millimeters: exports.earthRadius * 1000,
-      millimetres: exports.earthRadius * 1000,
-      nauticalmiles: exports.earthRadius / 1852,
-      radians: 1,
-      yards: exports.earthRadius / 1.0936,
-  };
-  /**
-   * Units of measurement factors based on 1 meter.
-   *
-   * @memberof helpers
-   * @type {Object}
-   */
-  exports.unitsFactors = {
-      centimeters: 100,
-      centimetres: 100,
-      degrees: 1 / 111325,
-      feet: 3.28084,
-      inches: 39.370,
-      kilometers: 1 / 1000,
-      kilometres: 1 / 1000,
-      meters: 1,
-      metres: 1,
-      miles: 1 / 1609.344,
-      millimeters: 1000,
-      millimetres: 1000,
-      nauticalmiles: 1 / 1852,
-      radians: 1 / exports.earthRadius,
-      yards: 1 / 1.0936,
-  };
-  /**
-   * Area of measurement factors based on 1 square meter.
-   *
-   * @memberof helpers
-   * @type {Object}
-   */
-  exports.areaFactors = {
-      acres: 0.000247105,
-      centimeters: 10000,
-      centimetres: 10000,
-      feet: 10.763910417,
-      inches: 1550.003100006,
-      kilometers: 0.000001,
-      kilometres: 0.000001,
-      meters: 1,
-      metres: 1,
-      miles: 3.86e-7,
-      millimeters: 1000000,
-      millimetres: 1000000,
-      yards: 1.195990046,
-  };
-  /**
-   * Wraps a GeoJSON {@link Geometry} in a GeoJSON {@link Feature}.
-   *
-   * @name feature
-   * @param {Geometry} geometry input geometry
-   * @param {Object} [properties={}] an Object of key-value pairs to add as properties
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north] associated with the Feature
-   * @param {string|number} [options.id] Identifier associated with the Feature
-   * @returns {Feature} a GeoJSON Feature
-   * @example
-   * var geometry = {
-   *   "type": "Point",
-   *   "coordinates": [110, 50]
-   * };
-   *
-   * var feature = turf.feature(geometry);
-   *
-   * //=feature
-   */
-  function feature(geom, properties, options) {
-      if (options === void 0) { options = {}; }
-      var feat = { type: "Feature" };
-      if (options.id === 0 || options.id) {
-          feat.id = options.id;
-      }
-      if (options.bbox) {
-          feat.bbox = options.bbox;
-      }
-      feat.properties = properties || {};
-      feat.geometry = geom;
-      return feat;
-  }
-  exports.feature = feature;
-  /**
-   * Creates a GeoJSON {@link Geometry} from a Geometry string type & coordinates.
-   * For GeometryCollection type use `helpers.geometryCollection`
-   *
-   * @name geometry
-   * @param {string} type Geometry Type
-   * @param {Array<any>} coordinates Coordinates
-   * @param {Object} [options={}] Optional Parameters
-   * @returns {Geometry} a GeoJSON Geometry
-   * @example
-   * var type = "Point";
-   * var coordinates = [110, 50];
-   * var geometry = turf.geometry(type, coordinates);
-   * // => geometry
-   */
-  function geometry(type, coordinates, options) {
-      switch (type) {
-          case "Point": return point(coordinates).geometry;
-          case "LineString": return lineString(coordinates).geometry;
-          case "Polygon": return polygon(coordinates).geometry;
-          case "MultiPoint": return multiPoint(coordinates).geometry;
-          case "MultiLineString": return multiLineString(coordinates).geometry;
-          case "MultiPolygon": return multiPolygon(coordinates).geometry;
-          default: throw new Error(type + " is invalid");
-      }
-  }
-  exports.geometry = geometry;
-  /**
-   * Creates a {@link Point} {@link Feature} from a Position.
-   *
-   * @name point
-   * @param {Array<number>} coordinates longitude, latitude position (each in decimal degrees)
-   * @param {Object} [properties={}] an Object of key-value pairs to add as properties
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north] associated with the Feature
-   * @param {string|number} [options.id] Identifier associated with the Feature
-   * @returns {Feature<Point>} a Point feature
-   * @example
-   * var point = turf.point([-75.343, 39.984]);
-   *
-   * //=point
-   */
-  function point(coordinates, properties, options) {
-      if (options === void 0) { options = {}; }
-      var geom = {
-          type: "Point",
-          coordinates: coordinates,
-      };
-      return feature(geom, properties, options);
-  }
-  exports.point = point;
-  /**
-   * Creates a {@link Point} {@link FeatureCollection} from an Array of Point coordinates.
-   *
-   * @name points
-   * @param {Array<Array<number>>} coordinates an array of Points
-   * @param {Object} [properties={}] Translate these properties to each Feature
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north]
-   * associated with the FeatureCollection
-   * @param {string|number} [options.id] Identifier associated with the FeatureCollection
-   * @returns {FeatureCollection<Point>} Point Feature
-   * @example
-   * var points = turf.points([
-   *   [-75, 39],
-   *   [-80, 45],
-   *   [-78, 50]
-   * ]);
-   *
-   * //=points
-   */
-  function points(coordinates, properties, options) {
-      if (options === void 0) { options = {}; }
-      return featureCollection(coordinates.map(function (coords) {
-          return point(coords, properties);
-      }), options);
-  }
-  exports.points = points;
-  /**
-   * Creates a {@link Polygon} {@link Feature} from an Array of LinearRings.
-   *
-   * @name polygon
-   * @param {Array<Array<Array<number>>>} coordinates an array of LinearRings
-   * @param {Object} [properties={}] an Object of key-value pairs to add as properties
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north] associated with the Feature
-   * @param {string|number} [options.id] Identifier associated with the Feature
-   * @returns {Feature<Polygon>} Polygon Feature
-   * @example
-   * var polygon = turf.polygon([[[-5, 52], [-4, 56], [-2, 51], [-7, 54], [-5, 52]]], { name: 'poly1' });
-   *
-   * //=polygon
-   */
-  function polygon(coordinates, properties, options) {
-      if (options === void 0) { options = {}; }
-      for (var _i = 0, coordinates_1 = coordinates; _i < coordinates_1.length; _i++) {
-          var ring = coordinates_1[_i];
-          if (ring.length < 4) {
-              throw new Error("Each LinearRing of a Polygon must have 4 or more Positions.");
-          }
-          for (var j = 0; j < ring[ring.length - 1].length; j++) {
-              // Check if first point of Polygon contains two numbers
-              if (ring[ring.length - 1][j] !== ring[0][j]) {
-                  throw new Error("First and last Position are not equivalent.");
-              }
-          }
-      }
-      var geom = {
-          type: "Polygon",
-          coordinates: coordinates,
-      };
-      return feature(geom, properties, options);
-  }
-  exports.polygon = polygon;
-  /**
-   * Creates a {@link Polygon} {@link FeatureCollection} from an Array of Polygon coordinates.
-   *
-   * @name polygons
-   * @param {Array<Array<Array<Array<number>>>>} coordinates an array of Polygon coordinates
-   * @param {Object} [properties={}] an Object of key-value pairs to add as properties
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north] associated with the Feature
-   * @param {string|number} [options.id] Identifier associated with the FeatureCollection
-   * @returns {FeatureCollection<Polygon>} Polygon FeatureCollection
-   * @example
-   * var polygons = turf.polygons([
-   *   [[[-5, 52], [-4, 56], [-2, 51], [-7, 54], [-5, 52]]],
-   *   [[[-15, 42], [-14, 46], [-12, 41], [-17, 44], [-15, 42]]],
-   * ]);
-   *
-   * //=polygons
-   */
-  function polygons(coordinates, properties, options) {
-      if (options === void 0) { options = {}; }
-      return featureCollection(coordinates.map(function (coords) {
-          return polygon(coords, properties);
-      }), options);
-  }
-  exports.polygons = polygons;
-  /**
-   * Creates a {@link LineString} {@link Feature} from an Array of Positions.
-   *
-   * @name lineString
-   * @param {Array<Array<number>>} coordinates an array of Positions
-   * @param {Object} [properties={}] an Object of key-value pairs to add as properties
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north] associated with the Feature
-   * @param {string|number} [options.id] Identifier associated with the Feature
-   * @returns {Feature<LineString>} LineString Feature
-   * @example
-   * var linestring1 = turf.lineString([[-24, 63], [-23, 60], [-25, 65], [-20, 69]], {name: 'line 1'});
-   * var linestring2 = turf.lineString([[-14, 43], [-13, 40], [-15, 45], [-10, 49]], {name: 'line 2'});
-   *
-   * //=linestring1
-   * //=linestring2
-   */
-  function lineString(coordinates, properties, options) {
-      if (options === void 0) { options = {}; }
-      if (coordinates.length < 2) {
-          throw new Error("coordinates must be an array of two or more positions");
-      }
-      var geom = {
-          type: "LineString",
-          coordinates: coordinates,
-      };
-      return feature(geom, properties, options);
-  }
-  exports.lineString = lineString;
-  /**
-   * Creates a {@link LineString} {@link FeatureCollection} from an Array of LineString coordinates.
-   *
-   * @name lineStrings
-   * @param {Array<Array<Array<number>>>} coordinates an array of LinearRings
-   * @param {Object} [properties={}] an Object of key-value pairs to add as properties
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north]
-   * associated with the FeatureCollection
-   * @param {string|number} [options.id] Identifier associated with the FeatureCollection
-   * @returns {FeatureCollection<LineString>} LineString FeatureCollection
-   * @example
-   * var linestrings = turf.lineStrings([
-   *   [[-24, 63], [-23, 60], [-25, 65], [-20, 69]],
-   *   [[-14, 43], [-13, 40], [-15, 45], [-10, 49]]
-   * ]);
-   *
-   * //=linestrings
-   */
-  function lineStrings(coordinates, properties, options) {
-      if (options === void 0) { options = {}; }
-      return featureCollection(coordinates.map(function (coords) {
-          return lineString(coords, properties);
-      }), options);
-  }
-  exports.lineStrings = lineStrings;
-  /**
-   * Takes one or more {@link Feature|Features} and creates a {@link FeatureCollection}.
-   *
-   * @name featureCollection
-   * @param {Feature[]} features input features
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north] associated with the Feature
-   * @param {string|number} [options.id] Identifier associated with the Feature
-   * @returns {FeatureCollection} FeatureCollection of Features
-   * @example
-   * var locationA = turf.point([-75.343, 39.984], {name: 'Location A'});
-   * var locationB = turf.point([-75.833, 39.284], {name: 'Location B'});
-   * var locationC = turf.point([-75.534, 39.123], {name: 'Location C'});
-   *
-   * var collection = turf.featureCollection([
-   *   locationA,
-   *   locationB,
-   *   locationC
-   * ]);
-   *
-   * //=collection
-   */
-  function featureCollection(features, options) {
-      if (options === void 0) { options = {}; }
-      var fc = { type: "FeatureCollection" };
-      if (options.id) {
-          fc.id = options.id;
-      }
-      if (options.bbox) {
-          fc.bbox = options.bbox;
-      }
-      fc.features = features;
-      return fc;
-  }
-  exports.featureCollection = featureCollection;
-  /**
-   * Creates a {@link Feature<MultiLineString>} based on a
-   * coordinate array. Properties can be added optionally.
-   *
-   * @name multiLineString
-   * @param {Array<Array<Array<number>>>} coordinates an array of LineStrings
-   * @param {Object} [properties={}] an Object of key-value pairs to add as properties
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north] associated with the Feature
-   * @param {string|number} [options.id] Identifier associated with the Feature
-   * @returns {Feature<MultiLineString>} a MultiLineString feature
-   * @throws {Error} if no coordinates are passed
-   * @example
-   * var multiLine = turf.multiLineString([[[0,0],[10,10]]]);
-   *
-   * //=multiLine
-   */
-  function multiLineString(coordinates, properties, options) {
-      if (options === void 0) { options = {}; }
-      var geom = {
-          type: "MultiLineString",
-          coordinates: coordinates,
-      };
-      return feature(geom, properties, options);
-  }
-  exports.multiLineString = multiLineString;
-  /**
-   * Creates a {@link Feature<MultiPoint>} based on a
-   * coordinate array. Properties can be added optionally.
-   *
-   * @name multiPoint
-   * @param {Array<Array<number>>} coordinates an array of Positions
-   * @param {Object} [properties={}] an Object of key-value pairs to add as properties
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north] associated with the Feature
-   * @param {string|number} [options.id] Identifier associated with the Feature
-   * @returns {Feature<MultiPoint>} a MultiPoint feature
-   * @throws {Error} if no coordinates are passed
-   * @example
-   * var multiPt = turf.multiPoint([[0,0],[10,10]]);
-   *
-   * //=multiPt
-   */
-  function multiPoint(coordinates, properties, options) {
-      if (options === void 0) { options = {}; }
-      var geom = {
-          type: "MultiPoint",
-          coordinates: coordinates,
-      };
-      return feature(geom, properties, options);
-  }
-  exports.multiPoint = multiPoint;
-  /**
-   * Creates a {@link Feature<MultiPolygon>} based on a
-   * coordinate array. Properties can be added optionally.
-   *
-   * @name multiPolygon
-   * @param {Array<Array<Array<Array<number>>>>} coordinates an array of Polygons
-   * @param {Object} [properties={}] an Object of key-value pairs to add as properties
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north] associated with the Feature
-   * @param {string|number} [options.id] Identifier associated with the Feature
-   * @returns {Feature<MultiPolygon>} a multipolygon feature
-   * @throws {Error} if no coordinates are passed
-   * @example
-   * var multiPoly = turf.multiPolygon([[[[0,0],[0,10],[10,10],[10,0],[0,0]]]]);
-   *
-   * //=multiPoly
-   *
-   */
-  function multiPolygon(coordinates, properties, options) {
-      if (options === void 0) { options = {}; }
-      var geom = {
-          type: "MultiPolygon",
-          coordinates: coordinates,
-      };
-      return feature(geom, properties, options);
-  }
-  exports.multiPolygon = multiPolygon;
-  /**
-   * Creates a {@link Feature<GeometryCollection>} based on a
-   * coordinate array. Properties can be added optionally.
-   *
-   * @name geometryCollection
-   * @param {Array<Geometry>} geometries an array of GeoJSON Geometries
-   * @param {Object} [properties={}] an Object of key-value pairs to add as properties
-   * @param {Object} [options={}] Optional Parameters
-   * @param {Array<number>} [options.bbox] Bounding Box Array [west, south, east, north] associated with the Feature
-   * @param {string|number} [options.id] Identifier associated with the Feature
-   * @returns {Feature<GeometryCollection>} a GeoJSON GeometryCollection Feature
-   * @example
-   * var pt = turf.geometry("Point", [100, 0]);
-   * var line = turf.geometry("LineString", [[101, 0], [102, 1]]);
-   * var collection = turf.geometryCollection([pt, line]);
-   *
-   * // => collection
-   */
-  function geometryCollection(geometries, properties, options) {
-      if (options === void 0) { options = {}; }
-      var geom = {
-          type: "GeometryCollection",
-          geometries: geometries,
-      };
-      return feature(geom, properties, options);
-  }
-  exports.geometryCollection = geometryCollection;
-  /**
-   * Round number to precision
-   *
-   * @param {number} num Number
-   * @param {number} [precision=0] Precision
-   * @returns {number} rounded number
-   * @example
-   * turf.round(120.4321)
-   * //=120
-   *
-   * turf.round(120.4321, 2)
-   * //=120.43
-   */
-  function round(num, precision) {
-      if (precision === void 0) { precision = 0; }
-      if (precision && !(precision >= 0)) {
-          throw new Error("precision must be a positive number");
-      }
-      var multiplier = Math.pow(10, precision || 0);
-      return Math.round(num * multiplier) / multiplier;
-  }
-  exports.round = round;
-  /**
-   * Convert a distance measurement (assuming a spherical Earth) from radians to a more friendly unit.
-   * Valid units: miles, nauticalmiles, inches, yards, meters, metres, kilometers, centimeters, feet
-   *
-   * @name radiansToLength
-   * @param {number} radians in radians across the sphere
-   * @param {string} [units="kilometers"] can be degrees, radians, miles, or kilometers inches, yards, metres,
-   * meters, kilometres, kilometers.
-   * @returns {number} distance
-   */
-  function radiansToLength(radians, units) {
-      if (units === void 0) { units = "kilometers"; }
-      var factor = exports.factors[units];
-      if (!factor) {
-          throw new Error(units + " units is invalid");
-      }
-      return radians * factor;
-  }
-  exports.radiansToLength = radiansToLength;
-  /**
-   * Convert a distance measurement (assuming a spherical Earth) from a real-world unit into radians
-   * Valid units: miles, nauticalmiles, inches, yards, meters, metres, kilometers, centimeters, feet
-   *
-   * @name lengthToRadians
-   * @param {number} distance in real units
-   * @param {string} [units="kilometers"] can be degrees, radians, miles, or kilometers inches, yards, metres,
-   * meters, kilometres, kilometers.
-   * @returns {number} radians
-   */
-  function lengthToRadians(distance, units) {
-      if (units === void 0) { units = "kilometers"; }
-      var factor = exports.factors[units];
-      if (!factor) {
-          throw new Error(units + " units is invalid");
-      }
-      return distance / factor;
-  }
-  exports.lengthToRadians = lengthToRadians;
-  /**
-   * Convert a distance measurement (assuming a spherical Earth) from a real-world unit into degrees
-   * Valid units: miles, nauticalmiles, inches, yards, meters, metres, centimeters, kilometres, feet
-   *
-   * @name lengthToDegrees
-   * @param {number} distance in real units
-   * @param {string} [units="kilometers"] can be degrees, radians, miles, or kilometers inches, yards, metres,
-   * meters, kilometres, kilometers.
-   * @returns {number} degrees
-   */
-  function lengthToDegrees(distance, units) {
-      return radiansToDegrees(lengthToRadians(distance, units));
-  }
-  exports.lengthToDegrees = lengthToDegrees;
-  /**
-   * Converts any bearing angle from the north line direction (positive clockwise)
-   * and returns an angle between 0-360 degrees (positive clockwise), 0 being the north line
-   *
-   * @name bearingToAzimuth
-   * @param {number} bearing angle, between -180 and +180 degrees
-   * @returns {number} angle between 0 and 360 degrees
-   */
-  function bearingToAzimuth(bearing) {
-      var angle = bearing % 360;
-      if (angle < 0) {
-          angle += 360;
-      }
-      return angle;
-  }
-  exports.bearingToAzimuth = bearingToAzimuth;
-  /**
-   * Converts an angle in radians to degrees
-   *
-   * @name radiansToDegrees
-   * @param {number} radians angle in radians
-   * @returns {number} degrees between 0 and 360 degrees
-   */
-  function radiansToDegrees(radians) {
-      var degrees = radians % (2 * Math.PI);
-      return degrees * 180 / Math.PI;
-  }
-  exports.radiansToDegrees = radiansToDegrees;
-  /**
-   * Converts an angle in degrees to radians
-   *
-   * @name degreesToRadians
-   * @param {number} degrees angle between 0 and 360 degrees
-   * @returns {number} angle in radians
-   */
-  function degreesToRadians(degrees) {
-      var radians = degrees % 360;
-      return radians * Math.PI / 180;
-  }
-  exports.degreesToRadians = degreesToRadians;
-  /**
-   * Converts a length to the requested unit.
-   * Valid units: miles, nauticalmiles, inches, yards, meters, metres, kilometers, centimeters, feet
-   *
-   * @param {number} length to be converted
-   * @param {Units} [originalUnit="kilometers"] of the length
-   * @param {Units} [finalUnit="kilometers"] returned unit
-   * @returns {number} the converted length
-   */
-  function convertLength(length, originalUnit, finalUnit) {
-      if (originalUnit === void 0) { originalUnit = "kilometers"; }
-      if (finalUnit === void 0) { finalUnit = "kilometers"; }
-      if (!(length >= 0)) {
-          throw new Error("length must be a positive number");
-      }
-      return radiansToLength(lengthToRadians(length, originalUnit), finalUnit);
-  }
-  exports.convertLength = convertLength;
-  /**
-   * Converts a area to the requested unit.
-   * Valid units: kilometers, kilometres, meters, metres, centimetres, millimeters, acres, miles, yards, feet, inches
-   * @param {number} area to be converted
-   * @param {Units} [originalUnit="meters"] of the distance
-   * @param {Units} [finalUnit="kilometers"] returned unit
-   * @returns {number} the converted distance
-   */
-  function convertArea(area, originalUnit, finalUnit) {
-      if (originalUnit === void 0) { originalUnit = "meters"; }
-      if (finalUnit === void 0) { finalUnit = "kilometers"; }
-      if (!(area >= 0)) {
-          throw new Error("area must be a positive number");
-      }
-      var startFactor = exports.areaFactors[originalUnit];
-      if (!startFactor) {
-          throw new Error("invalid original units");
-      }
-      var finalFactor = exports.areaFactors[finalUnit];
-      if (!finalFactor) {
-          throw new Error("invalid final units");
-      }
-      return (area / startFactor) * finalFactor;
-  }
-  exports.convertArea = convertArea;
-  /**
-   * isNumber
-   *
-   * @param {*} num Number to validate
-   * @returns {boolean} true/false
-   * @example
-   * turf.isNumber(123)
-   * //=true
-   * turf.isNumber('foo')
-   * //=false
-   */
-  function isNumber(num) {
-      return !isNaN(num) && num !== null && !Array.isArray(num) && !/^\s*$/.test(num);
-  }
-  exports.isNumber = isNumber;
-  /**
-   * isObject
-   *
-   * @param {*} input variable to validate
-   * @returns {boolean} true/false
-   * @example
-   * turf.isObject({elevation: 10})
-   * //=true
-   * turf.isObject('foo')
-   * //=false
-   */
-  function isObject(input) {
-      return (!!input) && (input.constructor === Object);
-  }
-  exports.isObject = isObject;
-  /**
-   * Validate BBox
-   *
-   * @private
-   * @param {Array<number>} bbox BBox to validate
-   * @returns {void}
-   * @throws Error if BBox is not valid
-   * @example
-   * validateBBox([-180, -40, 110, 50])
-   * //=OK
-   * validateBBox([-180, -40])
-   * //=Error
-   * validateBBox('Foo')
-   * //=Error
-   * validateBBox(5)
-   * //=Error
-   * validateBBox(null)
-   * //=Error
-   * validateBBox(undefined)
-   * //=Error
-   */
-  function validateBBox(bbox) {
-      if (!bbox) {
-          throw new Error("bbox is required");
-      }
-      if (!Array.isArray(bbox)) {
-          throw new Error("bbox must be an Array");
-      }
-      if (bbox.length !== 4 && bbox.length !== 6) {
-          throw new Error("bbox must be an Array of 4 or 6 numbers");
-      }
-      bbox.forEach(function (num) {
-          if (!isNumber(num)) {
-              throw new Error("bbox must only contain numbers");
-          }
-      });
-  }
-  exports.validateBBox = validateBBox;
-  /**
-   * Validate Id
-   *
-   * @private
-   * @param {string|number} id Id to validate
-   * @returns {void}
-   * @throws Error if Id is not valid
-   * @example
-   * validateId([-180, -40, 110, 50])
-   * //=Error
-   * validateId([-180, -40])
-   * //=Error
-   * validateId('Foo')
-   * //=OK
-   * validateId(5)
-   * //=OK
-   * validateId(null)
-   * //=Error
-   * validateId(undefined)
-   * //=Error
-   */
-  function validateId(id) {
-      if (!id) {
-          throw new Error("id is required");
-      }
-      if (["string", "number"].indexOf(typeof id) === -1) {
-          throw new Error("id must be a number or a string");
-      }
-  }
-  exports.validateId = validateId;
-  // Deprecated methods
-  function radians2degrees() {
-      throw new Error("method has been renamed to `radiansToDegrees`");
-  }
-  exports.radians2degrees = radians2degrees;
-  function degrees2radians() {
-      throw new Error("method has been renamed to `degreesToRadians`");
-  }
-  exports.degrees2radians = degrees2radians;
-  function distanceToDegrees() {
-      throw new Error("method has been renamed to `lengthToDegrees`");
-  }
-  exports.distanceToDegrees = distanceToDegrees;
-  function distanceToRadians() {
-      throw new Error("method has been renamed to `lengthToRadians`");
-  }
-  exports.distanceToRadians = distanceToRadians;
-  function radiansToDistance() {
-      throw new Error("method has been renamed to `radiansToLength`");
-  }
-  exports.radiansToDistance = radiansToDistance;
-  function bearingToAngle() {
-      throw new Error("method has been renamed to `bearingToAzimuth`");
-  }
-  exports.bearingToAngle = bearingToAngle;
-  function convertDistance() {
-      throw new Error("method has been renamed to `convertLength`");
-  }
-  exports.convertDistance = convertDistance;
-  });
-
-  unwrapExports(helpers);
-  helpers.earthRadius;
-  helpers.factors;
-  helpers.unitsFactors;
-  helpers.areaFactors;
-  helpers.feature;
-  helpers.geometry;
-  helpers.point;
-  helpers.points;
-  helpers.polygon;
-  helpers.polygons;
-  helpers.lineString;
-  helpers.lineStrings;
-  helpers.featureCollection;
-  helpers.multiLineString;
-  helpers.multiPoint;
-  helpers.multiPolygon;
-  helpers.geometryCollection;
-  helpers.round;
-  helpers.radiansToLength;
-  helpers.lengthToRadians;
-  helpers.lengthToDegrees;
-  helpers.bearingToAzimuth;
-  helpers.radiansToDegrees;
-  helpers.degreesToRadians;
-  helpers.convertLength;
-  helpers.convertArea;
-  helpers.isNumber;
-  helpers.isObject;
-  helpers.validateBBox;
-  helpers.validateId;
-  helpers.radians2degrees;
-  helpers.degrees2radians;
-  helpers.distanceToDegrees;
-  helpers.distanceToRadians;
-  helpers.radiansToDistance;
-  helpers.bearingToAngle;
-  helpers.convertDistance;
-
-  var invariant = createCommonjsModule(function (module, exports) {
-  Object.defineProperty(exports, "__esModule", { value: true });
-
   /**
    * Unwrap a coordinate from a Point Feature, Geometry or a single coordinate.
    *
@@ -9166,141 +8419,23 @@ function sendTile(id, tile) {
           throw new Error("coord is required");
       }
       if (!Array.isArray(coord)) {
-          if (coord.type === "Feature" && coord.geometry !== null && coord.geometry.type === "Point") {
+          if (coord.type === "Feature" &&
+              coord.geometry !== null &&
+              coord.geometry.type === "Point") {
               return coord.geometry.coordinates;
           }
           if (coord.type === "Point") {
               return coord.coordinates;
           }
       }
-      if (Array.isArray(coord) && coord.length >= 2 && !Array.isArray(coord[0]) && !Array.isArray(coord[1])) {
+      if (Array.isArray(coord) &&
+          coord.length >= 2 &&
+          !Array.isArray(coord[0]) &&
+          !Array.isArray(coord[1])) {
           return coord;
       }
       throw new Error("coord must be GeoJSON Point or an Array of numbers");
   }
-  exports.getCoord = getCoord;
-  /**
-   * Unwrap coordinates from a Feature, Geometry Object or an Array
-   *
-   * @name getCoords
-   * @param {Array<any>|Geometry|Feature} coords Feature, Geometry Object or an Array
-   * @returns {Array<any>} coordinates
-   * @example
-   * var poly = turf.polygon([[[119.32, -8.7], [119.55, -8.69], [119.51, -8.54], [119.32, -8.7]]]);
-   *
-   * var coords = turf.getCoords(poly);
-   * //= [[[119.32, -8.7], [119.55, -8.69], [119.51, -8.54], [119.32, -8.7]]]
-   */
-  function getCoords(coords) {
-      if (Array.isArray(coords)) {
-          return coords;
-      }
-      // Feature
-      if (coords.type === "Feature") {
-          if (coords.geometry !== null) {
-              return coords.geometry.coordinates;
-          }
-      }
-      else {
-          // Geometry
-          if (coords.coordinates) {
-              return coords.coordinates;
-          }
-      }
-      throw new Error("coords must be GeoJSON Feature, Geometry Object or an Array");
-  }
-  exports.getCoords = getCoords;
-  /**
-   * Checks if coordinates contains a number
-   *
-   * @name containsNumber
-   * @param {Array<any>} coordinates GeoJSON Coordinates
-   * @returns {boolean} true if Array contains a number
-   */
-  function containsNumber(coordinates) {
-      if (coordinates.length > 1 && helpers.isNumber(coordinates[0]) && helpers.isNumber(coordinates[1])) {
-          return true;
-      }
-      if (Array.isArray(coordinates[0]) && coordinates[0].length) {
-          return containsNumber(coordinates[0]);
-      }
-      throw new Error("coordinates must only contain numbers");
-  }
-  exports.containsNumber = containsNumber;
-  /**
-   * Enforce expectations about types of GeoJSON objects for Turf.
-   *
-   * @name geojsonType
-   * @param {GeoJSON} value any GeoJSON object
-   * @param {string} type expected GeoJSON type
-   * @param {string} name name of calling function
-   * @throws {Error} if value is not the expected type.
-   */
-  function geojsonType(value, type, name) {
-      if (!type || !name) {
-          throw new Error("type and name required");
-      }
-      if (!value || value.type !== type) {
-          throw new Error("Invalid input to " + name + ": must be a " + type + ", given " + value.type);
-      }
-  }
-  exports.geojsonType = geojsonType;
-  /**
-   * Enforce expectations about types of {@link Feature} inputs for Turf.
-   * Internally this uses {@link geojsonType} to judge geometry types.
-   *
-   * @name featureOf
-   * @param {Feature} feature a feature with an expected geometry type
-   * @param {string} type expected GeoJSON type
-   * @param {string} name name of calling function
-   * @throws {Error} error if value is not the expected type.
-   */
-  function featureOf(feature, type, name) {
-      if (!feature) {
-          throw new Error("No feature passed");
-      }
-      if (!name) {
-          throw new Error(".featureOf() requires a name");
-      }
-      if (!feature || feature.type !== "Feature" || !feature.geometry) {
-          throw new Error("Invalid input to " + name + ", Feature with geometry required");
-      }
-      if (!feature.geometry || feature.geometry.type !== type) {
-          throw new Error("Invalid input to " + name + ": must be a " + type + ", given " + feature.geometry.type);
-      }
-  }
-  exports.featureOf = featureOf;
-  /**
-   * Enforce expectations about types of {@link FeatureCollection} inputs for Turf.
-   * Internally this uses {@link geojsonType} to judge geometry types.
-   *
-   * @name collectionOf
-   * @param {FeatureCollection} featureCollection a FeatureCollection for which features will be judged
-   * @param {string} type expected GeoJSON type
-   * @param {string} name name of calling function
-   * @throws {Error} if value is not the expected type.
-   */
-  function collectionOf(featureCollection, type, name) {
-      if (!featureCollection) {
-          throw new Error("No featureCollection passed");
-      }
-      if (!name) {
-          throw new Error(".collectionOf() requires a name");
-      }
-      if (!featureCollection || featureCollection.type !== "FeatureCollection") {
-          throw new Error("Invalid input to " + name + ", FeatureCollection required");
-      }
-      for (var _i = 0, _a = featureCollection.features; _i < _a.length; _i++) {
-          var feature = _a[_i];
-          if (!feature || feature.type !== "Feature" || !feature.geometry) {
-              throw new Error("Invalid input to " + name + ", Feature with geometry required");
-          }
-          if (!feature.geometry || feature.geometry.type !== type) {
-              throw new Error("Invalid input to " + name + ": must be a " + type + ", given " + feature.geometry.type);
-          }
-      }
-  }
-  exports.collectionOf = collectionOf;
   /**
    * Get Geometry from Feature or Geometry Object
    *
@@ -9325,52 +8460,6 @@ function sendTile(id, tile) {
       }
       return geojson;
   }
-  exports.getGeom = getGeom;
-  /**
-   * Get GeoJSON object's type, Geometry type is prioritize.
-   *
-   * @param {GeoJSON} geojson GeoJSON object
-   * @param {string} [name="geojson"] name of the variable to display in error message
-   * @returns {string} GeoJSON type
-   * @example
-   * var point = {
-   *   "type": "Feature",
-   *   "properties": {},
-   *   "geometry": {
-   *     "type": "Point",
-   *     "coordinates": [110, 40]
-   *   }
-   * }
-   * var geom = turf.getType(point)
-   * //="Point"
-   */
-  function getType(geojson, name) {
-      if (geojson.type === "FeatureCollection") {
-          return "FeatureCollection";
-      }
-      if (geojson.type === "GeometryCollection") {
-          return "GeometryCollection";
-      }
-      if (geojson.type === "Feature" && geojson.geometry !== null) {
-          return geojson.geometry.type;
-      }
-      return geojson.type;
-  }
-  exports.getType = getType;
-  });
-
-  unwrapExports(invariant);
-  invariant.getCoord;
-  invariant.getCoords;
-  invariant.containsNumber;
-  invariant.geojsonType;
-  invariant.featureOf;
-  invariant.collectionOf;
-  invariant.getGeom;
-  invariant.getType;
-
-  var booleanPointInPolygon_1 = createCommonjsModule(function (module, exports) {
-  Object.defineProperty(exports, "__esModule", { value: true });
 
   // http://en.wikipedia.org/wiki/Even%E2%80%93odd_rule
   // modified from: https://github.com/substack/point-in-polygon/blob/master/index.js
@@ -9408,8 +8497,8 @@ function sendTile(id, tile) {
       if (!polygon) {
           throw new Error("polygon is required");
       }
-      var pt = invariant.getCoord(point);
-      var geom = invariant.getGeom(polygon);
+      var pt = getCoord(point);
+      var geom = getGeom(polygon);
       var type = geom.type;
       var bbox = polygon.bbox;
       var polys = geom.coordinates;
@@ -9441,7 +8530,6 @@ function sendTile(id, tile) {
       }
       return insidePoly;
   }
-  exports.default = booleanPointInPolygon;
   /**
    * inRing
    *
@@ -9453,7 +8541,8 @@ function sendTile(id, tile) {
    */
   function inRing(pt, ring, ignoreBoundary) {
       var isInside = false;
-      if (ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1]) {
+      if (ring[0][0] === ring[ring.length - 1][0] &&
+          ring[0][1] === ring[ring.length - 1][1]) {
           ring = ring.slice(0, ring.length - 1);
       }
       for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -9461,13 +8550,14 @@ function sendTile(id, tile) {
           var yi = ring[i][1];
           var xj = ring[j][0];
           var yj = ring[j][1];
-          var onBoundary = (pt[1] * (xi - xj) + yi * (xj - pt[0]) + yj * (pt[0] - xi) === 0) &&
-              ((xi - pt[0]) * (xj - pt[0]) <= 0) && ((yi - pt[1]) * (yj - pt[1]) <= 0);
+          var onBoundary = pt[1] * (xi - xj) + yi * (xj - pt[0]) + yj * (pt[0] - xi) === 0 &&
+              (xi - pt[0]) * (xj - pt[0]) <= 0 &&
+              (yi - pt[1]) * (yj - pt[1]) <= 0;
           if (onBoundary) {
               return !ignoreBoundary;
           }
-          var intersect = ((yi > pt[1]) !== (yj > pt[1])) &&
-              (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi);
+          var intersect = yi > pt[1] !== yj > pt[1] &&
+              pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi;
           if (intersect) {
               isInside = !isInside;
           }
@@ -9483,14 +8573,8 @@ function sendTile(id, tile) {
    * @returns {boolean} true/false if point is inside BBox
    */
   function inBBox(pt, bbox) {
-      return bbox[0] <= pt[0] &&
-          bbox[1] <= pt[1] &&
-          bbox[2] >= pt[0] &&
-          bbox[3] >= pt[1];
+      return (bbox[0] <= pt[0] && bbox[1] <= pt[1] && bbox[2] >= pt[0] && bbox[3] >= pt[1]);
   }
-  });
-
-  var booleanPointInPolygon = unwrapExports(booleanPointInPolygon_1);
 
   function initSelector(sources, projection) {
     const tileSize = 512; // TODO: don't assume this
@@ -9547,7 +8631,7 @@ function sendTile(id, tile) {
     }
   }
 
-  function init$2$1(userParams) {
+  function init$3(userParams) {
     const params = setParams$1(userParams);
 
     // Set up dummy API
@@ -9606,7 +8690,7 @@ function sendTile(id, tile) {
     const { context, width, height, style, mapboxToken } = params;
     const framebuffer = context.initFramebuffer({ width, height });
 
-    return init$2$1({ context, framebuffer, style, mapboxToken, units: "radians" })
+    return init$3({ context, framebuffer, style, mapboxToken, units: "radians" })
       .promise.then(api => setup$1(api, context, framebuffer.sampler))
       .catch(console.log);
   }
@@ -9946,7 +9030,7 @@ function sendTile(id, tile) {
    * @returns {vec3} a new 3D vector
    */
 
-  function create() {
+  function create$2() {
     var out = new ARRAY_TYPE(3);
 
     if (ARRAY_TYPE != Float32Array) {
@@ -10092,7 +9176,7 @@ function sendTile(id, tile) {
    * @returns {vec3} out
    */
 
-  function transformMat4(out, a, m) {
+  function transformMat4$1(out, a, m) {
     var x = a[0],
         y = a[1],
         z = a[2];
@@ -10135,7 +9219,7 @@ function sendTile(id, tile) {
    */
 
   (function () {
-    var vec = create();
+    var vec = create$2();
     return function (a, stride, offset, count, fn, arg) {
       var i, l;
 
@@ -10165,7 +9249,7 @@ function sendTile(id, tile) {
 
       return a;
     };
-  }());
+  })();
 
   function initEcefToLocalGeo() {
     var sinLon, cosLon, sinLat, cosLat;
@@ -10601,7 +9685,7 @@ function sendTile(id, tile) {
    * @returns {vec4} a new 4D vector
    */
 
-  function create$2() {
+  function create() {
     var out = new ARRAY_TYPE(4);
 
     if (ARRAY_TYPE != Float32Array) {
@@ -10622,7 +9706,7 @@ function sendTile(id, tile) {
    * @returns {vec4} out
    */
 
-  function transformMat4$1(out, a, m) {
+  function transformMat4(out, a, m) {
     var x = a[0],
         y = a[1],
         z = a[2],
@@ -10647,7 +9731,7 @@ function sendTile(id, tile) {
    */
 
   (function () {
-    var vec = create$2();
+    var vec = create();
     return function (a, stride, offset, count, fn, arg) {
       var i, l;
 
@@ -10679,7 +9763,7 @@ function sendTile(id, tile) {
 
       return a;
     };
-  }());
+  })();
 
   function initEdgePoints(ellipsoid, camPos, camRot, screen) {
     // Allocate working arrays and variables
@@ -10732,7 +9816,7 @@ function sendTile(id, tile) {
       rayVec[0] = screenPos[0] * tanX;
       rayVec[1] = screenPos[1] * tanY;
       // Rotate to model coordinates (Earth-Centered Earth-Fixed)
-      transformMat4$1(camRay, rayVec, camRot);
+      transformMat4(camRay, rayVec, camRot);
 
       // Find intersection of ray with ellipsoid
       var hit = ellipsoid.shoot(rayHit, camPos, camRay);
@@ -10969,7 +10053,7 @@ function sendTile(id, tile) {
       const visible = ( dot(rayVec, ecefPosition) < 0 );
 
       // Rotate to camera orientation
-      transformMat4(screenRay, rayVec, camInverse);
+      transformMat4$1(screenRay, rayVec, camInverse);
 
       // Normalize to z = -1
       screenRay[0] /= -screenRay[2];
@@ -11068,7 +10152,7 @@ function sendTile(id, tile) {
   }
 
   function initCursor3d(getRayParams, ellipsoid, initialPosition) {
-    // Input getRayParams is a method from yawgl.screen, converting screen X/Y
+    // Input getRayParams is a method from yawgl.initView, converting screen X/Y
     //  to a ray shooting into 3D space
     // Input initialPosition is a geodetic lon/lat/alt vector
 
@@ -11125,7 +10209,7 @@ function sendTile(id, tile) {
     function update(cursor2d, camera) {
       // Get screen ray in model coordinates (ECEF)
       getRayParams(cursorRay, cursor2d.x(), cursor2d.y());
-      transformMat4$1(ecefRay, cursorRay, camera.rotation);
+      transformMat4(ecefRay, cursorRay, camera.rotation);
 
       // Find intersection of ray with ellipsoid
       onScene = ellipsoid.shoot(cursorPosition, camera.ecefPos, ecefRay);
@@ -11668,11 +10752,10 @@ precision highp sampler2D;
   }
 
   function initGlobe(userParams) {
-    const params = setParams$2(userParams);
+    const params = setParams$3(userParams);
 
     return initMap(params)
-      .then(map => setup(map, params))
-      .catch(console.log);
+      .then(map => setup(map, params));
   }
 
   function setup(map, params) {

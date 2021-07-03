@@ -68,8 +68,9 @@ const globePromise = globeletjs.initGlobe(params);
 The `params` object supplied to initGlobe can have the following properties:
 - `container` (REQUIRED): The [ID][] of an [HTML DIV element][] where the 
   globe will be displayed
-- `style` (REQUIRED): A link to a [Mapbox style document][] describing the map 
-  to be rendered
+- `style` (REQUIRED): A link to a [MapLibre style document][Maplibre] 
+  describing the map to be rendered. Please see below for some notes about
+  [supported map styles](#supported-map-styles).
 - `mapboxToken`: Your API token for Mapbox services (if needed)
 - `width`: The width of the map that will be projected onto the globe,
   in pixels. Defaults to `container.clientWidth + 512`
@@ -85,7 +86,7 @@ with the globe, as described in the next section.
 
 [ID]: https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id
 [HTML DIV element]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/div
-[Mapbox style document]: https://docs.mapbox.com/mapbox-gl-js/style-spec/
+[MapLibre]: https://maplibre.org/maplibre-gl-js-docs/style-spec/
 
 ## How to interact with the globe API
 The Promise returned by `initGlobe` resolves to an API object, which you can
@@ -154,6 +155,23 @@ A marker can be removed from the globe as follows:
 ```javascript
 globeAPI.removeMarker(marker);
 ```
+
+## Supported map styles
+Many features described in the [style specification][MapLibre] are not yet
+supported. This is partly by design--GlobeletJS is intended to be an 80/20
+map solution, implementing 80% of the specification with 20% as much code as
+other software. But we are adding support for more features over time.
+
+The map rendering is delegated to the [tile-setter][] module, which is
+limited by some of its dependencies. See the ["un-supported features" list for
+tile-stencil][tile-stencil-limitations] and the [tile-gl TODO list][tile-gl-todo]
+for an (incomplete) list of what is not supported.
+
+We welcome your feedback on what additional features you would like to see
+supported!
+
+[tile-stencil-limitations]: https://github.com/GlobeletJS/tile-stencil#un-supported-features
+[tile-gl-todo]: https://github.com/GlobeletJS/tile-gl#todo
 
 ## About the code (for advanced users)
 For development on Node.js, you can install the package from NPM:
