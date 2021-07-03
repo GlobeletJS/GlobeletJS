@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "satellite-view": "^2.0.1",
-    "spinning-ball": "^0.2.3",
+    "spinning-ball": "^0.2.4",
     "tile-setter": "^0.0.6",
     "yawgl": "^0.3.1"
   }

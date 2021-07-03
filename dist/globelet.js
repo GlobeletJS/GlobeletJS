@@ -9027,7 +9027,7 @@ if (!Math.hypot) Math.hypot = function () {
  * @returns {vec3} a new 3D vector
  */
 
-function create() {
+function create$2() {
   var out = new ARRAY_TYPE(3);
 
   if (ARRAY_TYPE != Float32Array) {
@@ -9173,7 +9173,7 @@ function dot(a, b) {
  * @returns {vec3} out
  */
 
-function transformMat4(out, a, m) {
+function transformMat4$1(out, a, m) {
   var x = a[0],
       y = a[1],
       z = a[2];
@@ -9216,7 +9216,7 @@ function transformMat3(out, a, m) {
  */
 
 (function () {
-  var vec = create();
+  var vec = create$2();
   return function (a, stride, offset, count, fn, arg) {
     var i, l;
 
@@ -9246,7 +9246,7 @@ function transformMat3(out, a, m) {
 
     return a;
   };
-}());
+})();
 
 function initEcefToLocalGeo() {
   var sinLon, cosLon, sinLat, cosLat;
@@ -9682,7 +9682,7 @@ function initECEF(ellipsoid, initialPos) {
  * @returns {vec4} a new 4D vector
  */
 
-function create$2() {
+function create() {
   var out = new ARRAY_TYPE(4);
 
   if (ARRAY_TYPE != Float32Array) {
@@ -9703,7 +9703,7 @@ function create$2() {
  * @returns {vec4} out
  */
 
-function transformMat4$1(out, a, m) {
+function transformMat4(out, a, m) {
   var x = a[0],
       y = a[1],
       z = a[2],
@@ -9728,7 +9728,7 @@ function transformMat4$1(out, a, m) {
  */
 
 (function () {
-  var vec = create$2();
+  var vec = create();
   return function (a, stride, offset, count, fn, arg) {
     var i, l;
 
@@ -9760,7 +9760,7 @@ function transformMat4$1(out, a, m) {
 
     return a;
   };
-}());
+})();
 
 function initEdgePoints(ellipsoid, camPos, camRot, screen) {
   // Allocate working arrays and variables
@@ -9813,7 +9813,7 @@ function initEdgePoints(ellipsoid, camPos, camRot, screen) {
     rayVec[0] = screenPos[0] * tanX;
     rayVec[1] = screenPos[1] * tanY;
     // Rotate to model coordinates (Earth-Centered Earth-Fixed)
-    transformMat4$1(camRay, rayVec, camRot);
+    transformMat4(camRay, rayVec, camRot);
 
     // Find intersection of ray with ellipsoid
     var hit = ellipsoid.shoot(rayHit, camPos, camRay);
@@ -10050,7 +10050,7 @@ function initProjector(ellipsoid, camPosition, camInverse, screen) {
     const visible = ( dot(rayVec, ecefPosition) < 0 );
 
     // Rotate to camera orientation
-    transformMat4(screenRay, rayVec, camInverse);
+    transformMat4$1(screenRay, rayVec, camInverse);
 
     // Normalize to z = -1
     screenRay[0] /= -screenRay[2];
@@ -10149,7 +10149,7 @@ function initCameraDynamics(screen, ellipsoid, initialPosition) {
 }
 
 function initCursor3d(getRayParams, ellipsoid, initialPosition) {
-  // Input getRayParams is a method from yawgl.screen, converting screen X/Y
+  // Input getRayParams is a method from yawgl.initView, converting screen X/Y
   //  to a ray shooting into 3D space
   // Input initialPosition is a geodetic lon/lat/alt vector
 
@@ -10206,7 +10206,7 @@ function initCursor3d(getRayParams, ellipsoid, initialPosition) {
   function update(cursor2d, camera) {
     // Get screen ray in model coordinates (ECEF)
     getRayParams(cursorRay, cursor2d.x(), cursor2d.y());
-    transformMat4$1(ecefRay, cursorRay, camera.rotation);
+    transformMat4(ecefRay, cursorRay, camera.rotation);
 
     // Find intersection of ray with ellipsoid
     onScene = ellipsoid.shoot(cursorPosition, camera.ecefPos, ecefRay);
