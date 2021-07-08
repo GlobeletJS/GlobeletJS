@@ -1,4 +1,4 @@
-import * as tileSetter from 'tile-setter';
+import * as tileSetter from "tile-setter";
 
 export function initMap(params) {
   const { context, width, height, style, mapboxToken } = params;
@@ -17,7 +17,6 @@ function setup(api, context, sampler) {
     sampler,
     camPos: new Float64Array([0.5, 0.5]),
     scale: new Float64Array(2),
-    changed: true,
   };
 
   return {
@@ -31,14 +30,14 @@ function setup(api, context, sampler) {
   };
 
   function draw(camPos, radius, view) {
-    let dMap = camPos[2] / radius *        // Normalize to radius = 1
+    const dMap = camPos[2] / radius *        // Normalize to radius = 1
       view.topEdge() * 2 / view.height() * // ray tangent per pixel
       api.projection.scale(camPos);
 
-    let k = 1.0 / dMap;
-    let zoom = Math.log2(k) - 9;
+    const k = 1.0 / dMap;
+    const zoom = Math.log2(k) - 9;
 
-    let changed = api.setCenterZoom(camPos, zoom, 'radians');
+    api.setCenterZoom(camPos, zoom, "radians");
     loadStatus = api.draw();
 
     texture.scale.set(api.getScale());

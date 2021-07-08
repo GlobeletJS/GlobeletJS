@@ -44,7 +44,7 @@ export function initMarkers(globe, container) {
   }
 
   function remove(marker) {
-    let index = markerList.indexOf(marker);
+    const index = markerList.indexOf(marker);
     if (index < 0) return;
 
     // Remove it from both the DOM and the list

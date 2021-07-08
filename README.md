@@ -20,6 +20,8 @@ a few things, but it will do them well.
 [OpenMapTiles]: https://openmaptiles.org/
 [CesiumJS]: https://github.com/AnalyticalGraphicsInc/cesium
 
+![tests](https://github.com/GlobeletJS/GlobeletJS/actions/workflows/node.js.yml/badge.svg)
+
 ## How to add GlobeletJS code to your webpage
 GlobeletJS is provided as an ESM import. Define your script tag as
 `type="module"`, then import the module:
