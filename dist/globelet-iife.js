@@ -43,11 +43,11 @@ var globeletjs = (function (exports) {
     if (!ext) return console.log("yawgl: extension " + name + " not supported!");
 
     const fnSuffix = name.split("_")[0];
-    const enumSuffix = '_' + fnSuffix;
+    const enumSuffix = "_" + fnSuffix;
 
     for (const key in ext) {
       const value = ext[key];
-      const isFunc = typeof value === 'function';
+      const isFunc = typeof value === "function";
       const suffix = isFunc ? fnSuffix : enumSuffix;
       const glKey = (key.endsWith(suffix))
         ? key.substring(0, key.length - suffix.length)
@@ -113,7 +113,7 @@ var globeletjs = (function (exports) {
       case gl.SAMPLER_CUBE:
         return getTextureSetter(gl.TEXTURE_CUBE_MAP);
       default:  // we should never get here
-        throw("unknown type: 0x" + type.toString(16));
+        throw "unknown type: 0x" + type.toString(16);
     }
 
     function getTextureSetter(bindPoint) {
@@ -143,26 +143,6 @@ var globeletjs = (function (exports) {
   }
 
   function createUniformSetters(gl, program) {
-    ({
-      [gl.FLOAT]: 1,
-      [gl.FLOAT_VEC2]: 2,
-      [gl.FLOAT_VEC3]: 3,
-      [gl.FLOAT_VEC4]: 4,
-      [gl.INT]: 1,
-      [gl.INT_VEC2]: 2,
-      [gl.INT_VEC3]: 3,
-      [gl.INT_VEC4]: 4,
-      [gl.BOOL]: 1,
-      [gl.BOOL_VEC2]: 2,
-      [gl.BOOL_VEC3]: 3,
-      [gl.BOOL_VEC4]: 4,
-      [gl.FLOAT_MAT2]: 4,
-      [gl.FLOAT_MAT3]: 9,
-      [gl.FLOAT_MAT4]: 16,
-      [gl.SAMPLER_2D]: 1,
-      [gl.SAMPLER_CUBE]: 1,
-    });
-
     // Collect info about all the uniforms used by the program
     const uniformInfo = Array
       .from({ length: gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS) })
@@ -173,12 +153,10 @@ var globeletjs = (function (exports) {
     var textureUnit = 0;
 
     return uniformInfo.reduce((d, info) => {
-      let { name, type, size } = info;
-      let isArray = name.endsWith("[0]");
-      let key = isArray ? name.slice(0, -3) : name;
+      const { name, type, size } = info;
+      const isArray = name.endsWith("[0]");
+      const key = isArray ? name.slice(0, -3) : name;
 
-      //let setter = createUniformSetter(gl, program, info, textureUnit);
-      //d[key] = wrapSetter(setter, isArray, type, size);
       d[key] = createUniformSetter(gl, program, info, textureUnit);
 
       if (textureTypes.includes(type)) textureUnit += size;
@@ -266,7 +244,7 @@ var globeletjs = (function (exports) {
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      let log = gl.getShaderInfoLog(shader);
+      const log = gl.getShaderInfoLog(shader);
       gl.deleteShader(shader);
       fail$2("An error occured compiling the shader", log);
     }
@@ -343,9 +321,9 @@ var globeletjs = (function (exports) {
 
   function setupAnisotropy(gl, target) {
     const ext = (
-      gl.getExtension('EXT_texture_filter_anisotropic') ||
-      gl.getExtension('MOZ_EXT_texture_filter_anisotropic') || 
-      gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic')
+      gl.getExtension("EXT_texture_filter_anisotropic") ||
+      gl.getExtension("MOZ_EXT_texture_filter_anisotropic") ||
+      gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic")
     );
     if (!ext) return () => undefined;
 
@@ -376,8 +354,8 @@ var globeletjs = (function (exports) {
       } = options;
 
       // For Image input, get size from element. Otherwise it must be supplied
-      const { 
-        width = 1, 
+      const {
+        width = 1,
         height = 1,
       } = (image) ? image : options;
 
@@ -456,7 +434,7 @@ var globeletjs = (function (exports) {
 
     function bindFramebufferAndSetViewport(options = {}) {
       const { buffer = null, size = gl.canvas } = options;
-      let { width, height } = size;
+      const { width, height } = size;
       gl.bindFramebuffer(gl.FRAMEBUFFER, buffer);
       gl.viewport(0, 0, width, height);
     }
@@ -469,7 +447,7 @@ var globeletjs = (function (exports) {
 
     function clipRect(x, y, width, height) {
       gl.enable(gl.SCISSOR_TEST);
-      let roundedArgs = [x, y, width, height].map(Math.round);
+      const roundedArgs = [x, y, width, height].map(Math.round);
       gl.scissor(...roundedArgs);
     }
 
@@ -477,7 +455,7 @@ var globeletjs = (function (exports) {
       const mode = gl.TRIANGLES;
       gl.bindVertexArray(vao);
       if (indices) {
-        let { type, offset } = indices;
+        const { type, offset } = indices;
         gl.drawElementsInstanced(mode, count, type, offset, instanceCount);
       } else {
         gl.drawArraysInstanced(mode, 0, count, instanceCount);
@@ -550,8 +528,8 @@ var globeletjs = (function (exports) {
     // Add Elements for globe interface, svg sprite, status bar, canvas
     const globeDiv = addChild("div", "main", container);
     globeDiv.id = "globe"; // TEMPORARY: For backwards compatibility
-    globeDiv.insertAdjacentHTML('afterbegin', sprite);
-    const toolTip = addChild("div", "status", globeDiv);
+    globeDiv.insertAdjacentHTML("afterbegin", sprite);
+    const toolTip = addChild( "div", "status", globeDiv);
     const canvas = addChild("canvas", "map", globeDiv);
 
     // Get a WebGL context and add yawgl functionality
@@ -600,9 +578,9 @@ var globeletjs = (function (exports) {
           scale: () => 1.0,
         };
       case "radians":
-        return { 
-          forward, 
-          inverse, 
+        return {
+          forward,
+          inverse,
           scale: scale$1,
         };
       case "degrees":
@@ -619,7 +597,7 @@ var globeletjs = (function (exports) {
   function forward([lon, lat]) {
     // Convert input longitude in radians to a Web Mercator x-coordinate
     // where x = 0 at lon = -PI, x = 1 at lon = +PI
-    let x = 0.5 + 0.5 * lon / Math.PI;
+    const x = 0.5 + 0.5 * lon / Math.PI;
 
     // Convert input latitude in radians to a Web Mercator y-coordinate
     // where y = 0 at lat = maxMercLat, y = 1 at lat = -maxMercLat
@@ -633,13 +611,16 @@ var globeletjs = (function (exports) {
   }
 
   function inverse([x, y]) {
-    let lon = 2.0 * (x - 0.5) * Math.PI;
-    let lat = 2.0 * Math.atan(Math.exp(Math.PI * (1.0 - 2.0 * y))) - Math.PI / 2;
+    const { atan, exp, PI } = Math;
+
+    const lon = 2.0 * (x - 0.5) * PI;
+    const lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * y))) - PI / 2;
 
     return [lon, lat];
   }
 
-  function scale$1([lon, lat]) {
+  function scale$1(point) {
+    const lat = point[1];
     // Return value scales a (differential) distance along the plane tangent to
     // the sphere at [lon, lat] to a distance in map coordinates.
     // NOTE: ASSUMES a sphere of radius 1! Input distances should be
@@ -651,7 +632,7 @@ var globeletjs = (function (exports) {
     const minTileSize = 256;
     const logTileSize = Math.log2(minTileSize);
 
-    const transform = { 
+    const transform = {
       k: 1, // Size of the world map, in pixels
       x: 0, // Rightward shift of lon = 0 from left edge of viewport, in pixels
       y: 0, // Downward shift of lat = 0 from top edge of viewport, in pixels
@@ -713,7 +694,7 @@ var globeletjs = (function (exports) {
         : sy;
       const [xNew, yNew] = [sx, yLim].map(Math.round);
 
-      // Make sure camera is still pointing at the original location: shift from 
+      // Make sure camera is still pointing at the original location: shift from
       // the center [0.5, 0.5] by the change in the translation due to rounding
       camPos[0] = 0.5 + (xNew - sx) / size.width;
       camPos[1] = 0.5 + (yNew - sy) / size.height;
@@ -730,19 +711,19 @@ var globeletjs = (function (exports) {
     }
 
     function setCenterZoom(c, z) {
-      let k = 512 * 2 ** z;
+      const k = 512 * 2 ** z;
 
-      let [xr, yr] = projection.forward(c);
-      let x = (0.5 - xr) * k + size.width / 2;
-      let y = (0.5 - yr) * k + size.height / 2;
+      const [xr, yr] = projection.forward(c);
+      const x = (0.5 - xr) * k + size.width / 2;
+      const y = (0.5 - yr) * k + size.height / 2;
 
       return setTransform({ k, x, y });
     }
 
     function localToGlobal([x, y]) {
       // Convert local map pixels to global XY
-      let { x: tx, y: ty, k } = transform;
-      // tx, ty is the shift of the map center (in pixels) 
+      const { x: tx, y: ty, k } = transform;
+      // tx, ty is the shift of the map center (in pixels)
       //   relative to the viewport origin (top left corner)
       return [(x - tx) / k + 0.5, (y - ty) / k + 0.5];
     }
@@ -841,7 +822,7 @@ void main() {
       useProgram();
 
       const { width, height } = framebufferSize;
-      screenScale([ 2 / width, -2 / height, pixRatio ]);
+      screenScale([2 / width, -2 / height, pixRatio]);
 
       const { x, y, z } = tileset[0];
       const numTiles = 1 << z;
@@ -898,7 +879,9 @@ void main() {
       });
   }
 
-  function initVectorTilePainter(context, framebufferSize, layerId, setAtlas) {
+  function initVectorTilePainter(
+    context, framebufferSize, layerId, setAtlas
+  ) {
     return function(tileBox, translate, scale) {
       const { x, y, tile } = tileBox;
       const { layers, atlas } = tile.data;
@@ -957,6 +940,7 @@ void main() {
       const paintTile = initVectorTilePainter(context, framebufferSize, id);
       return initTilesetPainter(grid, zoomFuncs, paintTile);
     }
+
     return { load, initPainter };
   }
 
@@ -1129,8 +1113,8 @@ void main() {
 
       const zoomFuncs = initSetters([
         // TODO: move these to serialization step??
-        //[layout["line-cap"],      "lineCap"],
-        //[layout["line-join"],     "lineJoin"],
+        // [layout["line-cap"],      "lineCap"],
+        // [layout["line-join"],     "lineJoin"],
         [layout["line-miter-limit"], "miterLimit"],
 
         [paint["line-width"],     "lineWidth"],
@@ -1144,6 +1128,7 @@ void main() {
       const paintTile = initVectorTilePainter(context, framebufferSize, id);
       return initTilesetPainter(grid, zoomFuncs, paintTile);
     }
+
     return { load, initPainter };
   }
 
@@ -1217,6 +1202,7 @@ void main() {
       const paintTile = initVectorTilePainter(context, framebufferSize, id);
       return initTilesetPainter(grid, zoomFuncs, paintTile);
     }
+
     return { load, initPainter };
   }
 
@@ -1314,9 +1300,12 @@ void main() {
         // TODO: sprites
       ], uniformSetters);
 
-      const paintTile = initVectorTilePainter(context, framebufferSize, id, setAtlas);
+      const paintTile = initVectorTilePainter(
+        context, framebufferSize, id, setAtlas
+      );
       return initTilesetPainter(grid, zoomFuncs, paintTile);
     }
+
     return { load, initPainter };
   }
 
@@ -1324,8 +1313,8 @@ void main() {
     const programs = {
       "background": initBackground(context),
       "circle": initCircle(context, framebuffer.size, preamble),
-      "line":   initLine(context, framebuffer.size, preamble),
-      "fill":   initFill(context, framebuffer.size, preamble),
+      "line": initLine(context, framebuffer.size, preamble),
+      "fill": initFill(context, framebuffer.size, preamble),
       "symbol": initText(context, framebuffer.size, preamble),
     };
 
@@ -1344,7 +1333,7 @@ void main() {
       } else if (buffers.labelPos) {
         return programs.symbol.load(buffers);
       } else {
-        throw("loadBuffers: unknown buffers structure!");
+        throw "loadBuffers: unknown buffers structure!";
       }
     }
 
@@ -1382,7 +1371,7 @@ void main() {
     function emitEvent(type, data = "1") {
       events[type] = data;
 
-      let audience = listeners[type];
+      const audience = listeners[type];
       if (!audience) return;
 
       Object.values(audience).forEach(listener => listener(data));
@@ -1391,15 +1380,15 @@ void main() {
     function addListener(type, listener) {
       if (!listeners[type]) listeners[type] = {};
 
-      let id = ++globalID;
+      const id = ++globalID;
       listeners[type][id] = listener;
-      
+
       if (events[type]) listener(events[type]);
       return id;
     }
 
     function removeListener(type, id) {
-      let audience = listeners[type];
+      const audience = listeners[type];
       if (audience) delete audience[id];
     }
 
@@ -1424,7 +1413,7 @@ void main() {
       style,
       mapboxToken,
       clampY = true,
-      units = 'degrees',
+      units = "degrees",
     } = userParams;
 
     const { buffer, size } = framebuffer;
@@ -1486,7 +1475,7 @@ void main() {
     // Returns an array containing urls to .png and .json files
     const prefix = /^mapbox:\/\/sprites\//;
     if ( !url.match(prefix) ) return {
-      image: url + ".png", 
+      image: url + ".png",
       meta: url + ".json",
     };
 
@@ -1495,7 +1484,7 @@ void main() {
     url = url.replace(prefix, apiRoot) + "/sprite";
     const tokenString = "?access_token=" + token;
     return {
-      image: url + ".png" + tokenString, 
+      image: url + ".png" + tokenString,
       meta: url + ".json" + tokenString,
     };
   }
@@ -1536,7 +1525,7 @@ void main() {
   function checkFetch(response) {
     if (!response.ok) {
       const { status, statusText, url } = response;
-      const message = ["HTTP", status, statusText, "for URL", url].join(" ");
+      const message = `HTTP ${status} ${statusText} for URL ${url}`;
       return Promise.reject(Error(message));
     }
 
@@ -1550,8 +1539,8 @@ void main() {
       img.onerror = () => reject(Error("Failed to retrieve image from " + href));
 
       img.onload = () => (img.complete && img.naturalWidth !== 0)
-          ? resolve(img)
-          : reject(Error("Incomplete image received from " + href));
+        ? resolve(img)
+        : reject(Error("Incomplete image received from " + href));
 
       img.crossOrigin = "anonymous";
       img.src = href;
@@ -1962,7 +1951,7 @@ void main() {
       let [x1, y1] = stops[iz];
 
       return interpolate(y0, scale(x0, x, x1), y1);
-    }
+    };
   }
 
   function getType(v) {
@@ -2004,7 +1993,7 @@ void main() {
           v1.map((v, i) => v + t * (v2[i] - v));
 
       default:       // Assume step function
-        return (v1, t, v2) => v1;
+        return (v1) => v1;
     }
   }
 
@@ -2038,14 +2027,14 @@ void main() {
     const { type, property = "zoom", base = 1, stops } = style;
 
     const getArg = (property === "zoom")
-      ? (zoom, feature) => zoom
+      ? (zoom) => zoom
       : (zoom, feature) => feature.properties[property];
 
     const getVal = (type === "identity")
       ? convertIfColor
       : buildInterpolator(stops, base);
 
-    if (!getVal) return console.log("style: " + JSON.stringify(style) + 
+    if (!getVal) return console.log("style: " + JSON.stringify(style) +
       "\nERROR in tile-stencil: unsupported style!");
 
     const styleFunc = (zoom, feature) => getVal(getArg(zoom, feature));
@@ -2215,7 +2204,11 @@ void main() {
       "heatmap-radius": 30,
       "heatmap-weight": 1,
       "heatmap-intensity": 1,
-      "heatmap-color": ["interpolate",["linear"],["heatmap-density"],0,"rgba(0, 0, 255,0)",0.1,"royalblue",0.3,"cyan",0.5,"lime",0.7,"yellow",1,"red"],
+      "heatmap-color": [
+        "interpolate", ["linear"], ["heatmap-density"],
+        0, "rgba(0, 0, 255,0)", 0.1, "royalblue", 0.3, "cyan",
+        0.5, "lime", 0.7, "yellow", 1, "red"
+      ],
       "heatmap-opacity": 1,
     },
     "hillshade": {
@@ -2229,13 +2222,13 @@ void main() {
   };
 
   const refProperties = [
-    'type', 
-    'source', 
-    'source-layer', 
-    'minzoom', 
-    'maxzoom', 
-    'filter', 
-    'layout'
+    "type",
+    "source",
+    "source-layer",
+    "minzoom",
+    "maxzoom",
+    "filter",
+    "layout"
   ];
 
   function derefLayers(layers) {
@@ -2255,7 +2248,7 @@ void main() {
     layers.forEach( layer => { map[layer.id] = layer; } );
 
     for (let i = 0; i < layers.length; i++) {
-      if ('ref' in layers[i]) {
+      if ("ref" in layers[i]) {
         layers[i] = deref(layers[i], map[layers[i].ref]);
       }
     }
@@ -2267,7 +2260,7 @@ void main() {
     const result = {};
 
     for (const k in layer) {
-      if (k !== 'ref') {
+      if (k !== "ref") {
         result[k] = layer[k];
       }
     }
@@ -2304,9 +2297,9 @@ void main() {
       const { type, url } = source;
 
       const infoPromise =
-        (type === "geojson") ? getGeoJSON(source.data).then(data => ({ data }))
-        : (url) ? getJSON(expandTileURL(url, token)) // Get linked TileJSON
-        : Promise.resolve({}); // No linked info
+        (type === "geojson") ? getGeoJSON(source.data).then(data => ({ data })) :
+        (url) ? getJSON(expandTileURL(url, token)) : // Get linked TileJSON
+        Promise.resolve({}); // No linked info
 
       return infoPromise.then(info => {
         // Assign everything to a new object for return.
@@ -2374,14 +2367,16 @@ void main() {
   function checkStyle(doc) {
     const { version, sources, layers } = doc;
 
+    const noSource =
+      typeof sources !== "object" ||
+      sources === null ||
+      Array.isArray(sources);
+
     const error =
-      (typeof sources !== "object" || sources === null || Array.isArray(sources))
-      ? "missing sources object"
-      : (!Array.isArray(layers))
-      ? "missing layers array"
-      : (version !== 8)
-      ? "unsupported version number"
-      : null;
+      noSource ? "missing sources object" :
+      (!Array.isArray(layers)) ? "missing layers array" :
+      (version !== 8) ? "unsupported version number" :
+      null;
 
     return (error) ? Promise.reject(error) : doc;
   }
@@ -2441,12 +2436,12 @@ void main() {
     function enqueueTask(newTask) {
       const defaultPriority = () => 0;
       taskId += 1;
-      tasks.push({ 
+      tasks.push({
         id: taskId,
         getPriority: newTask.getPriority || defaultPriority,
         chunks: newTask.chunks,
       });
-      if (!queueIsRunning) setZeroTimeout(runTaskQueue);
+      if (!queueIsRunning) window.setZeroTimeout(runTaskQueue);
       return taskId;
     }
 
@@ -2475,7 +2470,7 @@ void main() {
       let chunk = tasks[0].chunks.shift();
       chunk();
 
-      setZeroTimeout(runTaskQueue);
+      window.setZeroTimeout(runTaskQueue);
     }
 
     function isDone(task) {
@@ -2538,12 +2533,12 @@ void main() {
     function enqueueTask(newTask) {
       const defaultPriority = () => 0;
       taskId += 1;
-      tasks.push({ 
+      tasks.push({
         id: taskId,
         getPriority: newTask.getPriority || defaultPriority,
         chunks: newTask.chunks,
       });
-      if (!queueIsRunning) setZeroTimeout(runTaskQueue);
+      if (!queueIsRunning) window.setZeroTimeout(runTaskQueue);
       return taskId;
     }
 
@@ -2572,7 +2567,7 @@ void main() {
       let chunk = tasks[0].chunks.shift();
       chunk();
 
-      setZeroTimeout(runTaskQueue);
+      window.setZeroTimeout(runTaskQueue);
     }
 
     function isDone(task) {
@@ -2596,10 +2591,10 @@ void main() {
     // Confirm supplied styles are all vector layers reading from the same source
     if (!layers || !layers.length) fail("no valid array of style layers!");
 
-    let allVectors = layers.every( l => vectorTypes.includes(l.type) );
+    const allVectors = layers.every( l => vectorTypes.includes(l.type) );
     if (!allVectors) fail("not all layers are vector types!");
 
-    let sameSource = layers.every( l => l.source === layers[0].source );
+    const sameSource = layers.every( l => l.source === layers[0].source );
     if (!sameSource) fail("supplied layers use different sources!");
 
     if (!source) fail("parameters.source is required!");
@@ -2645,10 +2640,10 @@ void main() {
       cancelTask,
       activeTasks: () => workLoads.reduce( (a, b) => a + b, 0 ),
       terminate: () => workers.forEach( worker => worker.terminate() ),
-    }
+    };
 
     function startTask(payload, callback) {
-      let workerID = getIdleWorkerID(workLoads);
+      const workerID = getIdleWorkerID(workLoads);
       workLoads[workerID] += 1;
 
       msgId += 1;
@@ -2659,7 +2654,7 @@ void main() {
     }
 
     function cancelTask(id) {
-      let task = tasks[id];
+      const task = tasks[id];
       if (!task) return;
       workers[task.workerID].postMessage({ id, type: "cancel" });
       workLoads[task.workerID] -= 1;
@@ -3103,7 +3098,7 @@ function buildInterpolator(stops, base = 1) {
     let [x1, y1] = stops[iz];
 
     return interpolate(y0, scale(x0, x, x1), y1);
-  }
+  };
 }
 
 function getType(v) {
@@ -3145,7 +3140,7 @@ function getInterpolator(type) {
         v1.map((v, i) => v + t * (v2[i] - v));
 
     default:       // Assume step function
-      return (v1, t, v2) => v1;
+      return (v1) => v1;
   }
 }
 
@@ -3179,14 +3174,14 @@ function getStyleFunc(style) {
   const { type, property = "zoom", base = 1, stops } = style;
 
   const getArg = (property === "zoom")
-    ? (zoom, feature) => zoom
+    ? (zoom) => zoom
     : (zoom, feature) => feature.properties[property];
 
   const getVal = (type === "identity")
     ? convertIfColor
     : buildInterpolator(stops, base);
 
-  if (!getVal) return console.log("style: " + JSON.stringify(style) + 
+  if (!getVal) return console.log("style: " + JSON.stringify(style) +
     "\nERROR in tile-stencil: unsupported style!");
 
   const styleFunc = (zoom, feature) => getVal(getArg(zoom, feature));
@@ -3356,7 +3351,11 @@ const paintDefaults = {
     "heatmap-radius": 30,
     "heatmap-weight": 1,
     "heatmap-intensity": 1,
-    "heatmap-color": ["interpolate",["linear"],["heatmap-density"],0,"rgba(0, 0, 255,0)",0.1,"royalblue",0.3,"cyan",0.5,"lime",0.7,"yellow",1,"red"],
+    "heatmap-color": [
+      "interpolate", ["linear"], ["heatmap-density"],
+      0, "rgba(0, 0, 255,0)", 0.1, "royalblue", 0.3, "cyan",
+      0.5, "lime", 0.7, "yellow", 1, "red"
+    ],
     "heatmap-opacity": 1,
   },
   "hillshade": {
@@ -3370,7 +3369,7 @@ const paintDefaults = {
 };
 
 function buildFeatureFilter(filterObj) {
-  // filterObj is a filter definition following the "deprecated" syntax:
+  // filterObj is a filter definition following the 'deprecated' syntax:
   // https://maplibre.org/maplibre-gl-js-docs/style-spec/other/#other-filter
   if (!filterObj) return () => true;
   const [type, ...vals] = filterObj;
@@ -3400,13 +3399,13 @@ function getSimpleFilter(filterObj) {
 
   switch (type) {
     // Existential Filters
-    case "has": 
+    case "has":
       return d => !!getVal(d); // !! forces a Boolean return
-    case "!has": 
+    case "!has":
       return d => !getVal(d);
 
     // Comparison Filters
-    case "==": 
+    case "==":
       return d => getVal(d) === vals[0];
     case "!=":
       return d => getVal(d) !== vals[0];
@@ -4241,7 +4240,7 @@ function writeUtf8(buf, str, pos) {
 }
 
 class AlphaImage {
-  // See mapbox-gl-js/src/util/image.js
+  // See maplibre-gl-js/src/util/image.js
   constructor(size, data) {
     createImage(this, size, 1, data);
   }
@@ -4266,7 +4265,7 @@ function createImage(image, { width, height }, channels, data) {
   if (!data) {
     data = new Uint8Array(width * height * channels);
   } else if (data.length !== width * height * channels) {
-    throw new RangeError('mismatched image size');
+    throw new RangeError("mismatched image size");
   }
   return Object.assign(image, { width, height, data });
 }
@@ -4274,7 +4273,7 @@ function createImage(image, { width, height }, channels, data) {
 function resizeImage(image, { width, height }, channels) {
   if (width === image.width && height === image.height) return;
 
-  const size = { 
+  const size = {
     width: Math.min(image.width, width),
     height: Math.min(image.height, height),
   };
@@ -4290,10 +4289,10 @@ function copyImage(srcImg, dstImg, srcPt, dstPt, size, channels) {
   if (size.width === 0 || size.height === 0) return dstImg;
 
   if (outOfRange(srcPt, size, srcImg)) {
-    throw new RangeError('out of range source coordinates for image copy');
+    throw new RangeError("out of range source coordinates for image copy");
   }
   if (outOfRange(dstPt, size, dstImg)) {
-    throw new RangeError('out of range destination coordinates for image copy');
+    throw new RangeError("out of range destination coordinates for image copy");
   }
 
   const srcData = srcImg.data;
@@ -4328,7 +4327,7 @@ function outOfRange(point, size, image) {
 const GLYPH_PBF_BORDER$1 = 3;
 
 function parseGlyphPbf(data) {
-  // See mapbox-gl-js/src/style/parse_glyph_pbf.js
+  // See maplibre-gl-js/src/style/parse_glyph_pbf.js
   // Input is an ArrayBuffer, which will be read as a Uint8Array
   return new pbf(data).readFields(readFontstacks, []);
 }
@@ -4370,8 +4369,8 @@ function initGlyphCache(endpoint) {
     const first = range * 256;
     const last = first + 255;
     const href = endpoint
-      .replace('{fontstack}', font.split(" ").join("%20"))
-      .replace('{range}', first + "-" + last);
+      .replace("{fontstack}", font.split(" ").join("%20"))
+      .replace("{range}", first + "-" + last);
 
     return fetch(href)
       .then(getArrayBuffer)
@@ -4381,7 +4380,7 @@ function initGlyphCache(endpoint) {
 
   return function(font, code) {
     // 1. Find the 256-char block containing this code
-    if (code > 65535) throw Error('glyph codes > 65535 not supported');
+    if (code > 65535) throw Error("glyph codes > 65535 not supported");
     const range = Math.floor(code / 256);
 
     // 2. Get the Promise for the retrieval and parsing of the block
@@ -4496,7 +4495,7 @@ function potpack(boxes) {
 const ATLAS_PADDING$1 = 1;
 
 function buildAtlas(fonts) {
-  // See mapbox-gl-js/src/render/glyph_atlas.js
+  // See maplibre-gl-js/src/render/glyph_atlas.js
 
   // Construct position objects (metrics and rects) for each glyph
   const positions = Object.entries(fonts)
@@ -4543,7 +4542,7 @@ function getPosition(glyph) {
 }
 
 function copyGlyphBitmap(glyph, positions, image) {
-  let { id, bitmap, metrics } = glyph;
+  let { id, bitmap } = glyph;
   let position = positions[id];
   if (!position) return;
 
@@ -4563,7 +4562,7 @@ function initGetter(urlTemplate, key) {
 
   // Put in the API key, if supplied
   const endpoint = (key)
-    ? urlTemplate.replace('{key}', key)
+    ? urlTemplate.replace("{key}", key)
     : urlTemplate;
 
   const getGlyph = initGlyphCache(endpoint);
@@ -4601,12 +4600,12 @@ function getTokenParser(tokenText) {
     if (!result) {
       // No tokens left. Parse the plain text after the last token
       let str = tokenText.substring(charIndex);
-      tokenFuncs.push(props => str);
+      tokenFuncs.push(() => str);
       break;
     } else if (result.index > charIndex) {
       // There is some plain text before the token
       let str = tokenText.substring(charIndex, result.index);
-      tokenFuncs.push(props => str);
+      tokenFuncs.push(() => str);
     }
 
     // Add a function to process the current token
@@ -4614,7 +4613,7 @@ function getTokenParser(tokenText) {
     tokenFuncs.push(props => props[token]);
     charIndex = tokenPattern.lastIndex;
   }
-  
+
   // We now have an array of functions returning either a text string or
   // a feature property
   // Return a function that assembles everything
@@ -4692,22 +4691,22 @@ function initCircleParsing(style) {
     [paint["circle-radius"],  "radius"],
     [paint["circle-color"],   "color"],
     [paint["circle-opacity"], "opacity"],
-  ].filter(([get, key]) => get.type === "property");
+  ].filter(([get]) => get.type === "property");
 
   return function(feature, { z, x, y }) {
     const circlePos = flattenPoints(feature.geometry);
     if (!circlePos) return;
 
     const length = circlePos.length / 2;
-    
-    const buffers = { 
+
+    const buffers = {
       circlePos,
-      tileCoords: Array.from({ length }).flatMap(v => [x, y, z]),
+      tileCoords: Array.from({ length }).flatMap(() => [x, y, z]),
     };
 
     dataFuncs.forEach(([get, key]) => {
       let val = get(null, feature);
-      buffers[key] = Array.from({ length }).flatMap(v => val);
+      buffers[key] = Array.from({ length }).flatMap(() => val);
     });
 
     return buffers;
@@ -4734,7 +4733,7 @@ function initLineParsing(style) {
   const dataFuncs = [
     [paint["line-color"], "color"],
     [paint["line-opacity"], "opacity"],
-  ].filter(([get, key]) => get.type === "property");
+  ].filter(([get]) => get.type === "property");
 
   return function(feature, { z, x, y }) {
     const lines = flattenLines(feature.geometry);
@@ -4744,12 +4743,12 @@ function initLineParsing(style) {
 
     const buffers = {
       lines,
-      tileCoords: Array.from({ length }).flatMap(v => [x, y, z]),
+      tileCoords: Array.from({ length }).flatMap(() => [x, y, z]),
     };
 
     dataFuncs.forEach(([get, key]) => {
       let val = get(null, feature);
-      buffers[key] = Array.from({ length }).flatMap(v => val);
+      buffers[key] = Array.from({ length }).flatMap(() => val);
     });
 
     return buffers;
@@ -5481,9 +5480,9 @@ function initFillParsing(style) {
   const { paint } = style;
 
   const dataFuncs = [
-    [paint["fill-color"],   "color"],
+    [paint["fill-color"], "color"],
     [paint["fill-opacity"], "opacity"],
-  ].filter(([get, key]) => get.type === "property");
+  ].filter(([get]) => get.type === "property");
 
   return function(feature, { z, x, y }) {
     const triangles = triangulate(feature.geometry);
@@ -5494,12 +5493,12 @@ function initFillParsing(style) {
     const buffers = {
       position: triangles.vertices,
       indices: triangles.indices,
-      tileCoords: Array.from({ length }).flatMap(v => [x, y, z]),
+      tileCoords: Array.from({ length }).flatMap(() => [x, y, z]),
     };
 
     dataFuncs.forEach(([get, key]) => {
       let val = get(null, feature);
-      buffers[key] = Array.from({ length }).flatMap(v => val);
+      buffers[key] = Array.from({ length }).flatMap(() => val);
     });
 
     return buffers;
@@ -5574,19 +5573,19 @@ function getTextBoxShift(anchor) {
   // by the returned value * bounding box dimensions
   switch (anchor) {
     case "top-left":
-      return [ 0.0,  0.0];
+      return [0.0, 0.0];
     case "top-right":
-      return [-1.0,  0.0];
+      return [-1.0, 0.0];
     case "top":
-      return [-0.5,  0.0];
+      return [-0.5, 0.0];
     case "bottom-left":
-      return [ 0.0, -1.0];
+      return [0.0, -1.0];
     case "bottom-right":
       return [-1.0, -1.0];
     case "bottom":
       return [-0.5, -1.0];
     case "left":
-      return [ 0.0, -0.5];
+      return [0.0, -0.5];
     case "right":
       return [-1.0, -0.5];
     case "center":
@@ -5612,7 +5611,7 @@ function getLineShift(justify, boxShiftX) {
 }
 
 const whitespace = {
-  // From mapbox-gl-js/src/symbol/shaping.js
+  // From maplibre-gl-js/src/symbol/shaping.js
   [0x09]: true, // tab
   [0x0a]: true, // newline
   [0x0b]: true, // vertical tab
@@ -5622,17 +5621,17 @@ const whitespace = {
 };
 
 const breakable = {
-  // From mapbox-gl-js/src/symbol/shaping.js
-  [0x0a]:   true, // newline
-  [0x20]:   true, // space
-  [0x26]:   true, // ampersand
-  [0x28]:   true, // left parenthesis
-  [0x29]:   true, // right parenthesis
-  [0x2b]:   true, // plus sign
-  [0x2d]:   true, // hyphen-minus
-  [0x2f]:   true, // solidus
-  [0xad]:   true, // soft hyphen
-  [0xb7]:   true, // middle dot
+  // From maplibre-gl-js/src/symbol/shaping.js
+  [0x0a]: true, // newline
+  [0x20]: true, // space
+  [0x26]: true, // ampersand
+  [0x28]: true, // left parenthesis
+  [0x29]: true, // right parenthesis
+  [0x2b]: true, // plus sign
+  [0x2d]: true, // hyphen-minus
+  [0x2f]: true, // solidus
+  [0xad]: true, // soft hyphen
+  [0xb7]: true, // middle dot
   [0x200b]: true, // zero-width space
   [0x2010]: true, // hyphen
   [0x2013]: true, // en dash
@@ -5649,9 +5648,8 @@ function getBreakPoints(glyphs, spacing, targetWidth) {
     if (!whitespace[code]) cursor += advance + spacing;
 
     if (i == last) return;
-    if (!breakable[code] 
-      //&& !charAllowsIdeographicBreaking(code)
-    ) return;
+    // if (!breakable[code]&& !charAllowsIdeographicBreaking(code)) return;
+    if (!breakable[code]) return;
 
     let breakInfo = evaluateBreak(
       i + 1,
@@ -5732,7 +5730,7 @@ function splitLines(glyphs, spacing, maxWidth) {
 
   const lineCount = Math.ceil(totalWidth / maxWidth);
   if (lineCount < 1) return [];
-  
+
   const targetWidth = totalWidth / lineCount;
   const breakPoints = getBreakPoints(glyphs, spacing, targetWidth);
 
@@ -5813,7 +5811,7 @@ function initShaper(layout) {
     // 6. Fill in label origins for each glyph. TODO: assumes Point geometry
     const origin = feature.geometry.coordinates.slice();
     const labelPos = lines.flat()
-      .flatMap(g => origin);
+      .flatMap(() => origin);
 
     // 7. Collect all the glyph rects
     const sdfRect = lines.flat()
@@ -5829,7 +5827,7 @@ function initShaper(layout) {
     ];
 
     return { labelPos, charPos, sdfRect, bbox };
-  }
+  };
 }
 
 function initShaping(style) {
@@ -5840,7 +5838,7 @@ function initShaping(style) {
   const dataFuncs = [
     [paint["text-color"],   "color"],
     [paint["text-opacity"], "opacity"],
-  ].filter(([get, key]) => get.type === "property");
+  ].filter(([get]) => get.type === "property");
 
   return function(feature, tileCoords, atlas, tree) {
     // tree is an RBush from the 'rbush' module. NOTE: will be updated!
@@ -5861,11 +5859,11 @@ function initShaping(style) {
     tree.insert(box);
 
     const length = buffers.labelPos.length / 2;
-    buffers.tileCoords = Array.from({ length }).flatMap(v => [x, y, z]);
+    buffers.tileCoords = Array.from({ length }).flatMap(() => [x, y, z]);
 
     dataFuncs.forEach(([get, key]) => {
       let val = get(null, feature);
-      buffers[key] = Array.from({ length }).flatMap(v => val);
+      buffers[key] = Array.from({ length }).flatMap(() => val);
     });
 
     // TODO: drop if outside tile?
@@ -5908,13 +5906,13 @@ function concatBuffers(features) {
 function appendBuffers(buffers, newBuffers) {
   const appendix = Object.assign({}, newBuffers);
   if (buffers.indices) {
-    let indexShift = buffers.position.length / 2;
+    const indexShift = buffers.position.length / 2;
     appendix.indices = newBuffers.indices.map(i => i + indexShift);
   }
   Object.keys(buffers).forEach(k => {
     // NOTE: The 'obvious' buffers[k].push(...appendix[k]) fails with
     //  the error "Maximum call stack size exceeded"
-    let base = buffers[k];
+    const base = buffers[k];
     appendix[k].forEach(a => base.push(a));
   });
 }
@@ -6494,7 +6492,7 @@ function initBufferConstructors(styles) {
     return Object.entries(layers)
       .reverse() // Reverse order for collision checks
       .map(([id, layer]) => {
-        let serialize = layerSerializers[id];
+        const serialize = layerSerializers[id];
         if (serialize) return serialize(layer, tileCoords, atlas, tree);
       })
       .reverse()
@@ -6510,11 +6508,11 @@ function initLayerSerializer(style) {
   if (!transform) return;
 
   return function(layer, tileCoords, atlas, tree) {
-    let { type, extent, features } = layer;
+    const { type, extent, features } = layer;
 
-    let transformed = features.map(feature => {
-      let { properties, geometry } = feature;
-      let buffers = transform(feature, tileCoords, atlas, tree);
+    const transformed = features.map(feature => {
+      const { properties, geometry } = feature;
+      const buffers = transform(feature, tileCoords, atlas, tree);
       // NOTE: if no buffers, we don't even want to keep the original
       // feature--because it won't be visible to the user (not rendered)
       if (buffers) return { properties, geometry, buffers };
@@ -6835,7 +6833,7 @@ function readTile(tag, layers, pbf) {
 function initMVT(source) {
   const getURL = initUrlFunc(source.tiles);
 
-  // TODO: use VectorTile.extent. Requires changes in vector-tile-esm, tile-painter
+  // TODO: use VectorTile.extent. Requires changes in dependencies, dependents
   const size = 512;
 
   return function(tileCoords, callback) {
@@ -6855,34 +6853,36 @@ function initMVT(source) {
 }
 
 function xhrGet(href, type, callback) {
-  var req = new XMLHttpRequest();
-  req.responseType = type;
+  const req = new XMLHttpRequest();
 
+  req.responseType = type;
   req.onerror = errHandler;
   req.onabort = errHandler;
   req.onload = loadHandler;
 
-  req.open('get', href);
+  req.open("get", href);
   req.send();
 
   function errHandler(e) {
-    let err = "XMLHttpRequest ended with an " + e.type;
-    return callback(err);
+    return callback(xhrErr("ended with an ", e.type));
   }
-  function loadHandler(e) {
-    if (req.responseType !== type) {
-      let err = "XMLHttpRequest: Wrong responseType. Expected " +
-        type + ", got " + req.responseType;
-      return callback(err, req.response);
-    }
-    if (req.status !== 200) {
-      let err = "XMLHttpRequest: HTTP " + req.status + " error from " + href;
-      return callback(err, req.response);
-    }
-    return callback(null, req.response);
+
+  function loadHandler() {
+    const { responseType, status, response } = req;
+
+    const err = (responseType !== type) ?
+      xhrErr("Expected responseType ", type, ", got ", responseType) :
+      (status !== 200) ? xhrErr("HTTP ", status, " error from ", href) :
+      null;
+
+    return callback(err, response);
   }
 
   return req; // Request can be aborted via req.abort()
+}
+
+function xhrErr(...strings) {
+  return "XMLHttpRequest: " + strings.join("");
 }
 
 function initUrlFunc(endpoints) {
@@ -6891,7 +6891,7 @@ function initUrlFunc(endpoints) {
 
   return function(z, x, y) {
     index = (index + 1) % endpoints.length;
-    var endpoint = endpoints[index];
+    const endpoint = endpoints[index];
     return endpoint.replace(/{z}/, z).replace(/{x}/, x).replace(/{y}/, y);
   };
 }
@@ -7812,16 +7812,16 @@ function geojsonvtToJSON(value) {
   const { geometry, type: typeNum, tags: properties } = value;
   if (!geometry) return value;
 
-  const types = ['Unknown', 'Point', 'LineString', 'Polygon'];
+  const types = ["Unknown", "Point", "LineString", "Polygon"];
 
   const type = (geometry.length <= 1)
     ? types[typeNum]
-    : 'Multi' + types[typeNum];
+    : "Multi" + types[typeNum];
 
   const coordinates =
-    (type == "MultiPolygon") ? [geometry]
-    : (type === 'Point'|| type === 'LineString') ? geometry[0]
-    : geometry;
+    (type == "MultiPolygon") ? [geometry] :
+    (type === "Point" || type === "LineString") ? geometry[0] :
+    geometry;
 
   return { geometry: { type, coordinates }, properties };
 }
@@ -7834,31 +7834,38 @@ onmessage = function(msgEvent) {
 
   switch (type) {
     case "setup":
-      // NOTE: changing global variable!
-      let { styles, glyphEndpoint, source } = payload;
-      loader = (source.type === "geojson")
-        ? initGeojson(source, styles)
-        : initMVT(source);
-      processor = initSourceProcessor(payload);
-      break;
+      return setup(payload);
     case "getTile":
-      // let { z, x, y } = payload;
-      let callback = (err, result) => process(id, err, result, payload);
-      const request = loader(payload, callback);
-      tasks[id] = { request, status: "requested" };
-      break;
+      return getTile(payload, id);
     case "cancel":
-      let task = tasks[id];
-      if (task && task.status === "requested") task.request.abort();
-      delete tasks[id];
-      break;
-      // Bad message type!
+      return cancel(id);
   }
 };
 
+function setup(payload) {
+  const { styles, source } = payload;
+  // NOTE: changing global variables!
+  loader = (source.type === "geojson")
+    ? initGeojson(source, styles)
+    : initMVT(source);
+  processor = initSourceProcessor(payload);
+}
+
+function getTile(payload, id) {
+  const callback = (err, result) => process(id, err, result, payload);
+  const request = loader(payload, callback);
+  tasks[id] = { request, status: "requested" };
+}
+
+function cancel(id) {
+  const task = tasks[id];
+  if (task && task.status === "requested") task.request.abort();
+  delete tasks[id];
+}
+
 function process(id, err, result, tileCoords) {
   // Make sure we still have an active task for this ID
-  let task = tasks[id];
+  const task = tasks[id];
   if (!task) return;  // Task must have been canceled
 
   if (err) {
@@ -7872,7 +7879,7 @@ function process(id, err, result, tileCoords) {
 
 function sendTile(id, tile) {
   // Make sure we still have an active task for this ID
-  let task = tasks[id];
+  const task = tasks[id];
   if (!task) return; // Task must have been canceled
 
   // Get a list of all the Transferable objects
@@ -7939,10 +7946,10 @@ function sendTile(id, tile) {
     const dzmax = Math.log2(size);
 
     function getOrCreateTile(zxy) {
-      let id = zxy.join("/");
+      const id = zxy.join("/");
       if (tiles[id]) return tiles[id];
 
-      let tile = create(...zxy); // TODO: review create signature
+      const tile = create(...zxy); // TODO: review create signature
       if (tile) tiles[id] = tile;
       return tile;
     }
@@ -7950,7 +7957,7 @@ function sendTile(id, tile) {
     return { retrieve, process, drop };
 
     function retrieve(zxy, condition) {
-      let z = zxy[0];
+      const z = zxy[0];
       if (!condition) condition = ([pz]) => (pz < 0 || (z - pz) > dzmax);
 
       return getTileOrParent(zxy, 0, 0, size, condition);
@@ -7963,21 +7970,21 @@ function sendTile(id, tile) {
     ) {
       if (condition(zxy)) return;
 
-      let tile = getOrCreateTile(zxy);
+      const tile = getOrCreateTile(zxy);
       if (!tile) return; // can't create tile for this zxy
       if (tile.ready) return { tile, sx, sy, sw };
 
       // Get coordinates of the parent tile
-      let [z, x, y] = zxy;
-      let pz = z - 1;
-      let px = Math.floor(x / 2);
-      let py = Math.floor(y / 2);
-      let pzxy = [pz, px, py, ...zxy.slice(3)]; // Include extra coords, if any
+      const [z, x, y] = zxy;
+      const pz = z - 1;
+      const px = Math.floor(x / 2);
+      const py = Math.floor(y / 2);
+      const pzxy = [pz, px, py, ...zxy.slice(3)]; // Include extra coords, if any
 
       // Compute cropping parameters for the parent
-      let psx = sx / 2 + (x / 2 - px) * size;
-      let psy = sy / 2 + (y / 2 - py) * size;
-      let psw = sw / 2;
+      const psx = sx / 2 + (x / 2 - px) * size;
+      const psy = sy / 2 + (y / 2 - py) * size;
+      const psw = sw / 2;
 
       return getTileOrParent(pzxy, psx, psy, psw, condition);
     }
@@ -7988,7 +7995,7 @@ function sendTile(id, tile) {
 
     function drop(condition) {
       var numTiles = 0;
-      for (let id in tiles) {
+      for (const id in tiles) {
         if (condition(tiles[id])) {
           tiles[id].cancel();
           delete tiles[id];
@@ -8003,7 +8010,7 @@ function sendTile(id, tile) {
   function initCaches({ context, glyphs }) {
     const queue = init$2();
     const reporter = document.createElement("div");
-    
+
     function addSource({ source, layers }) {
       const loader = initLoader(source, layers);
       const factory = buildFactory({ loader, reporter });
@@ -8019,7 +8026,7 @@ function sendTile(id, tile) {
             threads: (source.type === "geojson") ? 1 : 2,
           });
         case "raster":
-          //return initRasterLoader(source, layers);
+          return; // initRasterLoader(source, layers);
         default: return;
       }
     }
@@ -8034,7 +8041,7 @@ function sendTile(id, tile) {
 
   function buildFactory({ loader, reporter }) {
     return function(z, x, y) {
-      let id = [z, x, y].join("/");
+      const id = [z, x, y].join("/");
       const tile = { z, x, y, id, priority: 0 };
 
       function callback(err, data) {
@@ -8053,7 +8060,7 @@ function sendTile(id, tile) {
       };
 
       return tile;
-    }
+    };
   }
 
   function initBoundsCheck(source) {
@@ -8075,12 +8082,12 @@ function sendTile(id, tile) {
       // Return true if out of bounds
       if (z < minzoom || maxzoom < z) return true;
 
-      let zFac = 1 / 2 ** z;
+      const zFac = 1 / 2 ** z;
       if ((x + 1) * zFac < xmin || xmax < x * zFac) return true;
       if ((y + 1) * zFac < ymin || ymax < y * zFac) return true;
 
       return false;
-    }
+    };
   }
 
   function defaultScale(t) {
@@ -8179,11 +8186,11 @@ function sendTile(id, tile) {
   }
 
   function getTileMetric(layout, tileset, padding = 0.595) {
+    const { min, max, sqrt } = Math;
     const zoom = tileset[0][2];
     const nTiles = 2 ** zoom;
     const scaleFac = layout.tileSize() / tileset.scale;
-    const mapResolution = 
-      Math.min(Math.max(1.0 / Math.sqrt(2), scaleFac), Math.sqrt(2));
+    const mapResolution = min(max(1.0 / sqrt(2), scaleFac), sqrt(2));
 
     function wrap(x, xmax) {
       while (x < 0) x += xmax;
@@ -8200,11 +8207,11 @@ function sendTile(id, tile) {
     const y1 = y0 + vpHeight / tileset.scale + 2 * pad;
 
     return function(tile) {
-      let zoomFac = 2 ** (zoom - tile.z);
-      let tileResolution = Math.min(1, mapResolution / zoomFac);
+      const zoomFac = 2 ** (zoom - tile.z);
+      const tileResolution = min(1, mapResolution / zoomFac);
 
       // Convert the tile cornerpoints to tile units at MAP zoom level
-      let tb = {
+      const tb = {
         x0: tile.x * zoomFac,
         x1: (tile.x + 1) * zoomFac,
         y0: tile.y * zoomFac,
@@ -8212,15 +8219,15 @@ function sendTile(id, tile) {
       };
 
       // Find intersections of map and tile. Be careful with the antimeridian
-      let xOverlap = Math.max(
+      const xOverlap = max(
         // Test for intersection with the tile in its raw position
-        Math.min(x1, tb.x1) - Math.max(x0, tb.x0),
+        min(x1, tb.x1) - max(x0, tb.x0),
         // Test with the tile shifted across the antimeridian
-        Math.min(x1, tb.x1 + nTiles) - Math.max(x0, tb.x0 + nTiles)
+        min(x1, tb.x1 + nTiles) - max(x0, tb.x0 + nTiles)
       );
-      let yOverlap = Math.min(y1, tb.y1) - Math.max(y0, tb.y0);
-      let overlapArea = Math.max(0, xOverlap) * Math.max(0, yOverlap);
-      let visibleArea = overlapArea / mapResolution ** 2;
+      const yOverlap = min(y1, tb.y1) - max(y0, tb.y0);
+      const overlapArea = max(0, xOverlap) * max(0, yOverlap);
+      const visibleArea = overlapArea / mapResolution ** 2;
 
       // Flip sign to put most valuable tiles at the minimum. TODO: unnecessary?
       return 1.0 - visibleArea * tileResolution;
@@ -8255,14 +8262,14 @@ function sendTile(id, tile) {
       // Retrieve a tile box for every tile in the grid
       var tilesDone = 0;
       const grid = tiles.map(([x, y, z]) => {
-        let [xw, yw, zw] = tileWrap([x, y, z]);
+        const [xw, yw, zw] = tileWrap([x, y, z]);
 
         if (outOfBounds(zw, xw, yw)) {
           tilesDone += 1; // Count it as complete
           return;
         }
 
-        let box = tileCache.retrieve([zw, xw, yw], stopCondition);
+        const box = tileCache.retrieve([zw, xw, yw], stopCondition);
         if (!box) return;
 
         tilesDone += box.sw ** 2;
@@ -8287,12 +8294,12 @@ function sendTile(id, tile) {
     const layerSources = layers.reduce((d, l) => (d[l.id] = l.source, d), {});
 
     const grids = Object.entries(sourceDescriptions).map(([key, source]) => {
-      let subset = layers.filter(l => l.source === key);
+      const subset = layers.filter(l => l.source === key);
       if (!subset.length) return;
 
-      let tileCache = caches.addSource({ source, layers: subset });
+      const tileCache = caches.addSource({ source, layers: subset });
       if (!tileCache) return;
-      let grid = initTileGrid({ key, source, tileCache });
+      const grid = initTileGrid({ key, source, tileCache });
 
       grid.layers = subset;
       return grid;
@@ -8322,10 +8329,10 @@ function sendTile(id, tile) {
   }
 
   function initRenderer(context, style) {
-    const { sources, spriteData: spriteObject, layers } = style;
+    const { layers } = style;
 
     const painters = layers.map(layer => {
-      let painter = context.initPainter(getStyleFuncs(layer));
+      const painter = context.initPainter(getStyleFuncs(layer));
 
       painter.visible = () => layer.visible;
       return painter;
@@ -8336,7 +8343,7 @@ function sendTile(id, tile) {
       painters.forEach(painter => {
         if (zoom < painter.minzoom || painter.maxzoom < zoom) return;
         if (!painter.visible()) return;
-        let tileset = tilesets[painter.source];
+        const tileset = tilesets[painter.source];
         painter({ tileset, zoom, pixRatio });
       });
     };
@@ -8591,7 +8598,7 @@ function sendTile(id, tile) {
       if (!tileBox) return;
       const dataLayer = tileBox.tile.data.layers[layer];
       if (!dataLayer) return;
-      //const { features, extent = tileSize } = dataLayer;
+      // const { features, extent = tileSize } = dataLayer;
       const { features } = dataLayer;
       const extent = tileSize; // TODO: use data extent
       if (!features || !features.length) return;
@@ -8602,7 +8609,7 @@ function sendTile(id, tile) {
 
       // Find the nearest feature
       const { distance, feature } = features.reduce((nearest, feature) => {
-        let distance = measureDistance(tileXY, feature.geometry);
+        const distance = measureDistance(tileXY, feature.geometry);
         if (distance < nearest.distance) nearest = { distance, feature };
         return nearest;
       }, { distance: Infinity });
@@ -8621,14 +8628,18 @@ function sendTile(id, tile) {
 
     switch (type) {
       case "Point":
-        let [x, y] = coordinates;
-        return Math.sqrt((x - pt[0]) ** 2 + (y - pt[1]) ** 2);
+        return distToPoint(coordinates, pt);
       case "Polygon":
       case "MultiPolygon":
         return booleanPointInPolygon(pt, geometry) ? 0 : Infinity;
       default:
         return; // Unknown feature type!
     }
+  }
+
+  function distToPoint(coords, pt) {
+    const [x, y] = coords;
+    return Math.sqrt((x - pt[0]) ** 2 + (y - pt[1]) ** 2);
   }
 
   function init$3(userParams) {
@@ -8655,14 +8666,14 @@ function sendTile(id, tile) {
 
   function setup$2(styleDoc, params, api) {
     const sources = initSources(styleDoc, params.context, api);
-    sources.reporter.addEventListener("tileLoaded", 
+    sources.reporter.addEventListener("tileLoaded",
       () => params.eventHandler.emitEvent("tileLoaded"),
       false);
 
     // Set up interactive toggling of layer visibility
     styleDoc.layers.forEach(l => {
       // TODO: use functionalized visibility from tile-stencil?
-      let visibility = l.layout ? l.layout.visibility : false;
+      const visibility = l.layout ? l.layout.visibility : false;
       l.visible = (!visibility || visibility === "visible");
     });
 
@@ -8682,7 +8693,7 @@ function sendTile(id, tile) {
     };
 
     api.select = initSelector(sources, params.projection);
-    
+
     return api;
   }
 
@@ -8702,7 +8713,6 @@ function sendTile(id, tile) {
       sampler,
       camPos: new Float64Array([0.5, 0.5]),
       scale: new Float64Array(2),
-      changed: true,
     };
 
     return {
@@ -8716,14 +8726,14 @@ function sendTile(id, tile) {
     };
 
     function draw(camPos, radius, view) {
-      let dMap = camPos[2] / radius *        // Normalize to radius = 1
+      const dMap = camPos[2] / radius *        // Normalize to radius = 1
         view.topEdge() * 2 / view.height() * // ray tangent per pixel
         api.projection.scale(camPos);
 
-      let k = 1.0 / dMap;
-      let zoom = Math.log2(k) - 9;
+      const k = 1.0 / dMap;
+      const zoom = Math.log2(k) - 9;
 
-      api.setCenterZoom(camPos, zoom, 'radians');
+      api.setCenterZoom(camPos, zoom, "radians");
       loadStatus = api.draw();
 
       texture.scale.set(api.getScale());
@@ -8763,8 +8773,8 @@ function sendTile(id, tile) {
     function computeRayParams() {
       // Compute porthole size
       portRect = porthole.getBoundingClientRect();
-      let newWidth = portRect.right - portRect.left;
-      let newHeight = portRect.bottom - portRect.top;
+      const newWidth = portRect.right - portRect.left;
+      const newHeight = portRect.bottom - portRect.top;
 
       // Exit if no change
       if (width === newWidth && height === newHeight) return false;
@@ -8788,7 +8798,7 @@ function sendTile(id, tile) {
       // when the mouse is at the left top pixel in the box.
       // rect.right and .bottom are NOT equal to clientX/Y at the bottom
       // right pixel -- they are one more than the clientX/Y values.
-      // Thus the number of pixels in the box is given by 
+      // Thus the number of pixels in the box is given by
       //    porthole.clientWidth = rect.right - rect.left  (NO +1 !!)
       var x = clientX - portRect.left;
       var y = portRect.bottom - clientY - 1; // Flip sign to make +y upward
@@ -8797,12 +8807,12 @@ function sendTile(id, tile) {
       // rather than pixel count, to ensure we get -1 and +1 at the ends.
       // (Confirm by considering the 2x2 case)
       var xratio = 2 * x / (width - 1) - 1;
-      var yratio = 2 * y / (height - 1) -1;
+      var yratio = 2 * y / (height - 1) - 1;
 
       rayVec[0] = xratio * maxRay[0];
       rayVec[1] = yratio * maxRay[1];
-      //rayVec[2] = -1.0;
-      //rayVec[3] = 0.0;
+      // rayVec[2] = -1.0;
+      // rayVec[3] = 0.0;
       return;
     }
   }
@@ -8835,15 +8845,15 @@ function sendTile(id, tile) {
     const threshold = 6;
 
     return {
-      // Methods to report local state. These protect local values, returning a copy
+      // Methods to report local state. Return a copy to protect local values
       touchStarted: () => touchStarted,
-      zoomStarted:  () => zoomStarted,
-      moved:        () => moved,
-      zoomed:       () => zoomed,
-      tapped:       () => tapped,
-      touchEnded:   () => touchEnded,
-      hasChanged:   () => (moved || zoomed || tapped),
-      zscale:       () => zscale,
+      zoomStarted: () => zoomStarted,
+      moved: () => moved,
+      zoomed: () => zoomed,
+      tapped: () => tapped,
+      touchEnded: () => touchEnded,
+      hasChanged: () => (moved || zoomed || tapped),
+      zscale: () => zscale,
       x: () => cursorX,
       y: () => cursorY,
 
@@ -8918,37 +8928,38 @@ function sendTile(id, tile) {
 
     // Remember the distance between two pointers
     var lastDistance = 1.0;
-    
+
     // Capture the drag event so we can disable any default actions
-    div.addEventListener('dragstart', function(drag) {
+    div.addEventListener("dragstart", function(drag) {
       drag.preventDefault();
       return false;
     }, false);
 
     // Add mouse events
-    div.addEventListener('mousedown',   cursor.startTouch, false);
-    div.addEventListener('mousemove',   cursor.move,       false);
-    div.addEventListener('mouseup',     cursor.endTouch,   false);
-    div.addEventListener('mouseleave',  cursor.endTouch,   false);
-    div.addEventListener('wheel',       wheelZoom,         false);
+    div.addEventListener("mousedown",   cursor.startTouch, false);
+    div.addEventListener("mousemove",   cursor.move,       false);
+    div.addEventListener("mouseup",     cursor.endTouch,   false);
+    div.addEventListener("mouseleave",  cursor.endTouch,   false);
+    div.addEventListener("wheel",       wheelZoom,         false);
 
     // Add touch events
-    div.addEventListener('touchstart',  initTouch,       false);
-    div.addEventListener('touchmove',   moveTouch,       false);
-    div.addEventListener('touchend',    cursor.endTouch, false);
-    div.addEventListener('touchcancel', cursor.endTouch, false);
+    div.addEventListener("touchstart",  initTouch,       false);
+    div.addEventListener("touchmove",   moveTouch,       false);
+    div.addEventListener("touchend",    cursor.endTouch, false);
+    div.addEventListener("touchcancel", cursor.endTouch, false);
 
     // Return a pointer to the cursor object
     return cursor;
 
     function initTouch(evnt) {
-      evnt.preventDefault();
-      switch (evnt.touches.length) {
-        case 1: 
-          cursor.startTouch(evnt.touches[0]);
+      const { preventDefault, touches } = evnt;
+      preventDefault();
+      switch (touches.length) {
+        case 1:
+          cursor.startTouch(touches[0]);
           break;
         case 2:
-          var midpoint = getMidPoint(evnt.touches[0], evnt.touches[1]);
+          var midpoint = getMidPoint(touches[0], touches[1]);
           cursor.startTouch(midpoint);
           cursor.startZoom(midpoint);
           // Initialize the starting distance between touches
@@ -8960,15 +8971,16 @@ function sendTile(id, tile) {
     }
 
     function moveTouch(evnt) {
-      evnt.preventDefault();
+      const { preventDefault, touches } = evnt;
+      preventDefault();
       // NOTE: MDN says to add the touchmove handler within the touchstart handler
       // https://developer.mozilla.org/en-US/docs/Web/API/Touch_events/Using_Touch_Events
-      switch (evnt.touches.length) {
+      switch (touches.length) {
         case 1:
-          cursor.move(evnt.touches[0]);
+          cursor.move(touches[0]);
           break;
         case 2:
-          var midpoint = getMidPoint(evnt.touches[0], evnt.touches[1]);
+          var midpoint = getMidPoint(touches[0], touches[1]);
           // Move the cursor to the midpoint
           cursor.move(midpoint);
           // Zoom based on the change in distance between the two touches
@@ -8989,7 +9001,7 @@ function sendTile(id, tile) {
         clientX: p0.clientX + dx / 2,
         clientY: p0.clientY + dy / 2,
         distance: Math.sqrt(dx * dx + dy * dy),
-      }
+      };
     }
 
     function wheelZoom(turn) {
@@ -9044,7 +9056,7 @@ function sendTile(id, tile) {
   /**
    * Calculates the length of a vec3
    *
-   * @param {vec3} a vector to calculate length of
+   * @param {ReadonlyVec3} a vector to calculate length of
    * @returns {Number} length of a
    */
 
@@ -9074,8 +9086,8 @@ function sendTile(id, tile) {
    * Adds two vec3's
    *
    * @param {vec3} out the receiving vector
-   * @param {vec3} a the first operand
-   * @param {vec3} b the second operand
+   * @param {ReadonlyVec3} a the first operand
+   * @param {ReadonlyVec3} b the second operand
    * @returns {vec3} out
    */
 
@@ -9089,8 +9101,8 @@ function sendTile(id, tile) {
    * Subtracts vector b from vector a
    *
    * @param {vec3} out the receiving vector
-   * @param {vec3} a the first operand
-   * @param {vec3} b the second operand
+   * @param {ReadonlyVec3} a the first operand
+   * @param {ReadonlyVec3} b the second operand
    * @returns {vec3} out
    */
 
@@ -9104,7 +9116,7 @@ function sendTile(id, tile) {
    * Scales a vec3 by a scalar number
    *
    * @param {vec3} out the receiving vector
-   * @param {vec3} a the vector to scale
+   * @param {ReadonlyVec3} a the vector to scale
    * @param {Number} b amount to scale the vector by
    * @returns {vec3} out
    */
@@ -9119,8 +9131,8 @@ function sendTile(id, tile) {
    * Adds two vec3's after scaling the second operand by a scalar value
    *
    * @param {vec3} out the receiving vector
-   * @param {vec3} a the first operand
-   * @param {vec3} b the second operand
+   * @param {ReadonlyVec3} a the first operand
+   * @param {ReadonlyVec3} b the second operand
    * @param {Number} scale the amount to scale b by before adding
    * @returns {vec3} out
    */
@@ -9135,7 +9147,7 @@ function sendTile(id, tile) {
    * Normalize a vec3
    *
    * @param {vec3} out the receiving vector
-   * @param {vec3} a vector to normalize
+   * @param {ReadonlyVec3} a vector to normalize
    * @returns {vec3} out
    */
 
@@ -9158,8 +9170,8 @@ function sendTile(id, tile) {
   /**
    * Calculates the dot product of two vec3's
    *
-   * @param {vec3} a the first operand
-   * @param {vec3} b the second operand
+   * @param {ReadonlyVec3} a the first operand
+   * @param {ReadonlyVec3} b the second operand
    * @returns {Number} dot product of a and b
    */
 
@@ -9171,8 +9183,8 @@ function sendTile(id, tile) {
    * 4th vector component is implicitly '1'
    *
    * @param {vec3} out the receiving vector
-   * @param {vec3} a the vector to transform
-   * @param {mat4} m matrix to transform with
+   * @param {ReadonlyVec3} a the vector to transform
+   * @param {ReadonlyMat4} m matrix to transform with
    * @returns {vec3} out
    */
 
@@ -9191,8 +9203,8 @@ function sendTile(id, tile) {
    * Transforms the vec3 with a mat3.
    *
    * @param {vec3} out the receiving vector
-   * @param {vec3} a the vector to transform
-   * @param {mat3} m the 3x3 matrix to transform with
+   * @param {ReadonlyVec3} a the vector to transform
+   * @param {ReadonlyMat3} m the 3x3 matrix to transform with
    * @returns {vec3} out
    */
 
@@ -9252,6 +9264,7 @@ function sendTile(id, tile) {
   })();
 
   function initEcefToLocalGeo() {
+    const { cos, sin, sqrt } = Math;
     var sinLon, cosLon, sinLat, cosLat;
     const toENU = new Float64Array(9);
 
@@ -9269,18 +9282,15 @@ function sendTile(id, tile) {
       transformMat3( diff, diff, toENU );
 
       // 2. Convert horizontal component to changes in longitude, latitude
-      let r = length(anchor);
+      const r = length(anchor);
       delta[0] = diff[0] / r / (cosLat + 0.0001); // +0.0001 avoids /0
       delta[1] = diff[1] / r;
       delta[2] = diff[2];
-      
+
       // 3. Latitudinal change is a rotation about an axis in the x-z plane, with
       // direction vec3.cross(anchor,North), or -East. We only want the component
       // rotating about the x-axis in view coordinates.
-      delta[1] *= (
-          Math.cos(viewPos[0]) * cosLon +
-          Math.sin(viewPos[0]) * sinLon 
-          );
+      delta[1] *= (cos(viewPos[0]) * cosLon + sin(viewPos[0]) * sinLon);
       return;
     }
 
@@ -9292,8 +9302,8 @@ function sendTile(id, tile) {
       // Input normal is an ellipsoid surface normal at the desired ENU origin
 
       // Update sines and cosines of the latitude and longitude of the normal
-      const p2 = normal[0]**2 + normal[2]**2;
-      const p = Math.sqrt(p2);
+      const p2 = normal[0] ** 2 + normal[2] ** 2;
+      const p = sqrt(p2);
       if (p > 0) {
         sinLon = normal[0] / p;
         cosLon = normal[2] / p;
@@ -9301,7 +9311,7 @@ function sendTile(id, tile) {
         sinLon = 0.0;
         cosLon = 0.0;
       }
-      const r = Math.sqrt(p2 + normal[1]**2);
+      const r = sqrt(p2 + normal[1] ** 2);
       sinLat = normal[1] / r;
       cosLat = p / r;
 
@@ -9328,10 +9338,11 @@ function sendTile(id, tile) {
   }
 
   function initEllipsoid() {
+    const { atan2, sin, cos, sqrt } = Math;
     // Store ellipsoid parameters
     const semiMajor = 6371.0;  // kilometers
     const semiMinor = 6371.0;  // kilometers
-    const e2 = 1.0 - semiMinor**2 / semiMajor**2; // Ellipticity squared
+    const e2 = 1.0 - semiMinor ** 2 / semiMajor ** 2; // Ellipticity squared
     // https://en.wikipedia.org/wiki/Earth_radius#Mean_radius
     const meanRadius = (2.0 * semiMajor + semiMinor) / 3.0;
 
@@ -9349,7 +9360,7 @@ function sendTile(id, tile) {
       findHorizon,
     };
 
-    function ecef2geocentric( gcPos, ecefPos ) {
+    function ecef2geocentric(gcPos, ecefPos) {
       // Output gcPos is a pointer to a 3-element array, containing geocentric
       //  longitude & latitude (radians) and altitude (meters) coordinates
       // Input ecefPos is a pointer to a 3-element array, containing earth-
@@ -9357,17 +9368,19 @@ function sendTile(id, tile) {
 
       // Note: order of calculations is chosen to allow calls with same array
       // as input & output (gcPos, ecefPos point to same array)
-      const p2 = ecefPos[0]**2 + ecefPos[2]**2; // Squared distance from polar axis
 
-      gcPos[0] = Math.atan2( ecefPos[0], ecefPos[2] );     // Longitude
-      gcPos[1] = Math.atan2( ecefPos[1], Math.sqrt(p2) );  // Latitude
+      // Compute squared distance from polar axis
+      const p2 = ecefPos[0] ** 2 + ecefPos[2] ** 2;
+
+      gcPos[0] = atan2(ecefPos[0], ecefPos[2]);     // Longitude
+      gcPos[1] = atan2(ecefPos[1], sqrt(p2));  // Latitude
 
       // NOTE: this "altitude" is distance from SPHERE, not ellipsoid
-      gcPos[2] = Math.sqrt( p2 + ecefPos[1]**2 ) - meanRadius; // Altitude
+      gcPos[2] = sqrt(p2 + ecefPos[1] ** 2) - meanRadius; // Altitude
       return;
     }
 
-    function geodetic2ecef( ecef, geodetic ) {
+    function geodetic2ecef(ecef, geodetic) {
       // Output ecef is a pointer to a 3-element array containing X,Y,Z values
       //   of the point in earth-centered earth-fixed (ECEF) coordinates
       // Input geodetic is a pointer to a 3-element array, containing
@@ -9375,15 +9388,15 @@ function sendTile(id, tile) {
 
       // Start from prime vertical radius of curvature -- see
       // https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
-      const sinLat = Math.sin( geodetic[1] );
-      const primeVertRad = semiMajor / Math.sqrt( 1.0 - e2 * sinLat**2 );
+      const sinLat = sin( geodetic[1] );
+      const primeVertRad = semiMajor / sqrt( 1.0 - e2 * sinLat ** 2 );
       // Radial distance from y-axis:
-      const p = (primeVertRad + geodetic[2]) * Math.cos(geodetic[1]);
+      const p = (primeVertRad + geodetic[2]) * cos(geodetic[1]);
 
       // Compute ECEF position
-      ecef[0] = p * Math.sin(geodetic[0]);
+      ecef[0] = p * sin(geodetic[0]);
       ecef[1] = (primeVertRad + geodetic[2]) * sinLat * (1.0 - e2);
-      ecef[2] = p * Math.cos(geodetic[0]);
+      ecef[2] = p * cos(geodetic[0]);
       return;
     }
 
@@ -9400,28 +9413,28 @@ function sendTile(id, tile) {
       //  i.e., for P = (x,y,z), MP = (x/a, y/b, z/c). Since M is diagonal
       //  (ellipsoid aligned along coordinate axes) we just scale each coordinate.
       mCam.set([
-          camera[0] / semiMajor, 
-          camera[1] / semiMinor,
-          camera[2] / semiMajor 
+        camera[0] / semiMajor,
+        camera[1] / semiMinor,
+        camera[2] / semiMajor
       ]);
       mRay.set([
-          rayVec[0] / semiMajor, 
-          rayVec[1] / semiMinor, 
-          rayVec[2] / semiMajor 
+        rayVec[0] / semiMajor,
+        rayVec[1] / semiMinor,
+        rayVec[2] / semiMajor
       ]);
 
       // We now have <mRay,mRay>*t^2 + 2*<mRay,mCam>*t + <mCam,mCam> - 1 = 0
       const a = dot(mRay, mRay);
       const b = 2.0 * dot(mRay, mCam);
       const c = dot(mCam, mCam) - 1.0;
-      const discriminant = b**2 - 4*a*c;
+      const discriminant = b ** 2 - 4 * a * c;
 
       const intersected = (discriminant >= 0);
       var t;
       if (intersected) {
         // We want the closest intersection, with smallest positive t
         // We assume b < 0, if ray is pointing back from camera to ellipsoid
-        t = (-b - Math.sqrt(discriminant)) / (2.0 * a);
+        t = (-b - sqrt(discriminant)) / (2.0 * a);
       } else {
         // Find the point that comes closest to the unit sphere
         //   NOTE: this is NOT the closest point to the ellipsoid!
@@ -9452,7 +9465,7 @@ function sendTile(id, tile) {
 
       // 3. Find the error of the length of the perpendicular component
       const sinAlpha = meanRadius / length(camera); // sin(angle to horizon)
-      const tanAlpha = sinAlpha / Math.sqrt(1.0 - sinAlpha * sinAlpha);
+      const tanAlpha = sinAlpha / sqrt(1.0 - sinAlpha * sinAlpha);
       const dPerp = -paraLength * tanAlpha - perpLength;
 
       // 4. Find the corrected rayVec
@@ -9504,7 +9517,7 @@ function sendTile(id, tile) {
    * Transpose the values of a mat4
    *
    * @param {mat4} out the receiving matrix
-   * @param {mat4} a the source matrix
+   * @param {ReadonlyMat4} a the source matrix
    * @returns {mat4} out
    */
 
@@ -9554,7 +9567,7 @@ function sendTile(id, tile) {
    * Rotates a matrix by the given angle around the X axis
    *
    * @param {mat4} out the receiving matrix
-   * @param {mat4} a the matrix to rotate
+   * @param {ReadonlyMat4} a the matrix to rotate
    * @param {Number} rad the angle to rotate the matrix by
    * @returns {mat4} out
    */
@@ -9657,7 +9670,7 @@ function sendTile(id, tile) {
       if (geodetic[0] >  Math.PI) geodetic[0] -= 2.0 * Math.PI;
       if (geodetic[0] < -Math.PI) geodetic[0] += 2.0 * Math.PI;
 
-      // Compute ECEF coordinates. NOTE WebGL coordinate convention: 
+      // Compute ECEF coordinates. NOTE WebGL coordinate convention:
       // +x to right, +y to top of screen, and +z into the screen
       ellipsoid.geodetic2ecef( position, geodetic );
 
@@ -9701,8 +9714,8 @@ function sendTile(id, tile) {
    * Transforms the vec4 with a mat4.
    *
    * @param {vec4} out the receiving vector
-   * @param {vec4} a the vector to transform
-   * @param {mat4} m matrix to transform with
+   * @param {ReadonlyVec4} a the vector to transform
+   * @param {ReadonlyMat4} m matrix to transform with
    * @returns {vec4} out
    */
 
@@ -9776,15 +9789,15 @@ function sendTile(id, tile) {
     const screenPoints = [
       [-1.0, -1.0], // Bottom left
       [-0.5, -1.0],
-      [ 0.0, -1.0], // Bottom center
-      [ 0.5, -1.0],
-      [ 1.0, -1.0], // Bottom right
-      [ 1.0, -0.5],
-      [ 1.0,  0.0], // Right center
-      [ 1.0,  0.5],
-      [ 1.0,  1.0], // Top right
-      [ 0.5,  1.0],
-      [ 0.0,  1.0], // Top center
+      [0.0, -1.0], // Bottom center
+      [0.5, -1.0],
+      [1.0, -1.0], // Bottom right
+      [1.0, -0.5],
+      [1.0,  0.0], // Right center
+      [1.0,  0.5],
+      [1.0,  1.0], // Top right
+      [0.5,  1.0],
+      [0.0,  1.0], // Top center
       [-0.5,  1.0],
       [-1.0,  1.0], // Top left
       [-1.0,  0.5],
@@ -9794,7 +9807,7 @@ function sendTile(id, tile) {
     ];
 
     // An edgePoint is the point on the ellipsoid visible from screenPoint
-    const edgePoints = screenPoints.map(pt => []);
+    const edgePoints = screenPoints.map(() => []);
     update();
 
     return {
@@ -9831,7 +9844,7 @@ function sendTile(id, tile) {
   function updateOscillator(pos, vel, ext, w0, dt, i1, i2) {
     // Update position and velocity for a critically damped oscillator, following
     // http://mathworld.wolfram.com/CriticallyDampedSimpleHarmonicMotion.html
-    
+
     // Inputs/outputs pos, vel are pointers to arrays
     // Inputs w0, t are primitive floating point values, indicating the
     //   natural frequency of the oscillator and the time step
@@ -9851,8 +9864,6 @@ function sendTile(id, tile) {
   //  or two-finger pinch movements
   function initZoom( ellipsoid ) {
     const w0 = 14.14; // Natural frequency of oscillator
-    ellipsoid.meanRadius() * 0.00001;
-    ellipsoid.meanRadius() * 8.0;
     const minVelocity = 0.001;
     const maxRotation = 0.15;
 
@@ -9877,11 +9888,11 @@ function sendTile(id, tile) {
       if (track) {
         // Adjust rotation to keep zoom location fixed on screen
         dPos.set(position);
-        dragonflyStalk( dPos, cursor3d.zoomRay, cursor3d.zoomPosition, ellipsoid );
+        dragonflyStalk(dPos, cursor3d.zoomRay, cursor3d.zoomPosition, ellipsoid);
         // Restrict size of rotation in one time step
-        subtract( dPos, dPos, position );
-        var limited = limitRotation( dPos, maxRotation );
-        add( position, position, dPos );
+        subtract(dPos, dPos, position);
+        var limited = limitRotation(dPos, maxRotation);
+        add(position, position, dPos);
       }
 
       // Scale rotational velocity by the ratio of the height change
@@ -9901,10 +9912,10 @@ function sendTile(id, tile) {
         cursor3d.stopZoom();
       }
       return;
-    }
+    };
   }
 
-  function limitRotation( dPos, maxRotation ) {
+  function limitRotation(dPos, maxRotation) {
     // Input dPos is a pointer to a 2-element array containing lon, lat changes
     // maxRotation is a primitive floating point value
 
@@ -9938,16 +9949,16 @@ function sendTile(id, tile) {
     var onEllipse = ellipsoid.shoot(target, unrotatedCamPos, ray);
     if (!onEllipse) return; // No intersection!
 
-    // Find the rotation about the y-axis required to bring scene point into 
+    // Find the rotation about the y-axis required to bring scene point into
     // the  x = target[0]  plane
     // First find distance of scene point from scene y-axis
     var sceneR = Math.sqrt( scenePos[0] ** 2 + scenePos[2] ** 2 );
     // If too short, exit rather than tipping poles out of y-z plane
     if ( sceneR < Math.abs(target[0]) ) return;
     var targetRotY = Math.asin( target[0] / sceneR );
-    outRotation[0] = 
+    outRotation[0] =
       Math.atan2( scenePos[0], scenePos[2] ) - // Y-angle of scene vector
-      //Math.asin( target[0] / sceneR );       // Y-angle of target point
+      // Math.asin( target[0] / sceneR );       // Y-angle of target point
       targetRotY;
 
     // We now know the x and y coordinates of the scene vector after rotation
@@ -9958,7 +9969,7 @@ function sendTile(id, tile) {
     // Find the rotation about the screen x-axis required to bring the scene
     // point into the target y = target[1] plane
     // Assumes 0 angle is aligned along Z, and angle > 0 is rotation toward -y !
-    outRotation[1] = 
+    outRotation[1] =
       Math.atan2( -1 * target[1], target[2] ) -  // X-angle of target point
       Math.atan2( -1 * scenePos[1], zRotated );  // X-angle of scene vector
 
@@ -9971,24 +9982,24 @@ function sendTile(id, tile) {
     const w0 = 40.0;
     const extension = new Float64Array(3);
 
-    return function( position, velocity, mouse3d, deltaTime ) {
+    return function(position, velocity, mouse3d, deltaTime) {
       // Input mouse3d is a pointer to a mouse object
       // Inputs position, velocity are pointers to vec3s
       // Input deltaTime is a primitive floating point value
 
       // Find the displacement of the clicked position on the globe
       // from the current mouse position
-      subtract( extension, mouse3d.position, mouse3d.clickPosition );
+      subtract(extension, mouse3d.position, mouse3d.clickPosition);
 
       // Convert to changes in longitude, latitude, and altitude
-      ellipsoid.ecefToDeltaLonLatAlt( extension, extension, 
-          mouse3d.clickPosition, position );
+      ellipsoid.ecefToDeltaLonLatAlt(extension, extension,
+        mouse3d.clickPosition, position);
       // Ignore altitude change for now
       extension[2] = 0.0;
 
       updateOscillator(position, velocity, extension, w0, deltaTime, 0, 1);
       return;
-    }
+    };
   }
 
   // initCoast: Update rotations based on a freely spinning globe (no forces)
@@ -10012,12 +10023,12 @@ function sendTile(id, tile) {
 
       // Adjust previous velocities for damping over the past time interval
       dvDamp = -1.0 * damping * deltaTime;
-      //vec3.scaleAndAdd(velocity, velocity, velocity, dvDamp);
+      // vec3.scaleAndAdd(velocity, velocity, velocity, dvDamp);
       velocity[0] += velocity[0] * dvDamp;
       velocity[1] += velocity[1] * dvDamp;
 
       // Update rotations
-      //vec3.scaleAndAdd(position, position, velocity, deltaTime);
+      // vec3.scaleAndAdd(position, position, velocity, deltaTime);
       position[0] += velocity[0] * deltaTime;
       position[1] += velocity[1] * deltaTime;
       return true;    // Position changed, need to re-render
@@ -10045,7 +10056,7 @@ function sendTile(id, tile) {
     function ecefToScreenRay(screenRay, ecefPosition) {
       // For a given point on the ellipsoid (in ECEF coordinates) find the
       // rayVec from a given camera position that will intersect it
-      
+
       // Translate to camera position
       subtract(rayVec, ecefPosition, camPosition);
       // rayVec now points from camera to ecef. The sign of the
@@ -10077,7 +10088,8 @@ function sendTile(id, tile) {
     // Keep track of the longitude/latitude of the edges of the screen
     const edges = initEdgePoints(ellipsoid, ecef.position, ecef.rotation, screen);
     // Initialize transforms from ellipsoid to screen positions
-    const projector = initProjector(ellipsoid, ecef.position, ecef.inverse, screen);
+    const projector = initProjector(ellipsoid,
+      ecef.position, ecef.inverse, screen);
 
     // Initialize some values and working arrays
     var time = 0.0;
@@ -10108,8 +10120,8 @@ function sendTile(id, tile) {
       velocity[0] = 0.0;
       velocity[1] = 0.0;
     }
-    function stopZoom() { 
-      velocity[2] = 0.0; 
+    function stopZoom() {
+      velocity[2] = 0.0;
     }
 
     function update(newTime, resized, cursor3d) {
@@ -10185,7 +10197,7 @@ function sendTile(id, tile) {
 
     // Return methods to read/update cursorPosition
     return {
-      // POINTERs to local arrays. WARNING: local values can be changed from outside!
+      // POINTERs to local arrays. WARNING: local vals can be changed outside!
       position: cursorPosition, // TODO: why make the name more ambiguous?
       cursorLonLat,
       clickPosition,
@@ -10194,11 +10206,11 @@ function sendTile(id, tile) {
 
       // Methods to report local state.
       // These protect the local value, since primitives are passed by value
-      isOnScene:  () => onScene,
-      isClicked:  () => clicked,
-      wasTapped:  () => wasTapped,
-      isZooming:  () => zooming,
-      zoomFixed:  () => zoomFix,
+      isOnScene: () => onScene,
+      isClicked: () => clicked,
+      wasTapped: () => wasTapped,
+      isZooming: () => zooming,
+      zoomFixed: () => zoomFix,
       zoomTarget: () => targetHeight,
 
       // Functions to update local state
@@ -10299,11 +10311,11 @@ function sendTile(id, tile) {
     return {
       view,
 
-      radius:    ellipsoid.meanRadius,
+      radius: ellipsoid.meanRadius,
 
       camMoving: () => camMoving,
       cameraPos: camera.position,
-      edgesPos:  camera.edgesPos,
+      edgesPos: camera.edgesPos,
 
       lonLatToScreenXY: camera.lonLatToScreenXY,
 
@@ -10316,11 +10328,11 @@ function sendTile(id, tile) {
     };
 
     function update(time) {
-      // Input time is a primitive floating point value representing the 
+      // Input time is a primitive floating point value representing the
       // time this function was called, in seconds
 
       // Check for changes in display size
-      let resized = view.changed();
+      const resized = view.changed();
 
       // Update camera dynamics
       camMoving = camera.update(time, resized, cursor3d);
@@ -10354,7 +10366,7 @@ function sendTile(id, tile) {
       : [map];
 
     if (!context || !(context.gl instanceof WebGLRenderingContext)) {
-      throw("satellite-view: no valid WebGLRenderingContext!");
+      throw "satellite-view: no valid WebGLRenderingContext!";
     }
 
     return { context, getPixelRatio, globeRadius, maps, flipY };
@@ -10554,7 +10566,7 @@ precision highp sampler2D;
     const texLookupSrc = texLookup(args);
 
     // Combine the GLSL-snippets into one shader source
-    const fragmentSrc = header + invertSrc + projectSrc + 
+    const fragmentSrc = header + invertSrc + projectSrc +
       texLookupSrc + dither2x2 + fragMain;
 
     return {
@@ -10566,7 +10578,7 @@ precision highp sampler2D;
   function buildSelector(n) {
     // In the texLookup code, add lines to check each of the supplied textures,
     // and sample the highest LOD that contains the current coordinate
-    var selector = ``;
+    var selector = ``; // eslint-disable-line quotes
     while (--n) selector += `inside(coords[${n}])
     ? texture2D(samplers[${n}], coords[${n}])
     : `;
@@ -10630,60 +10642,42 @@ precision highp sampler2D;
     }
   }
 
-  // Update tooltip text when mouse or scene changes
   function printToolTip(toolTip, ball) {
     // Input toolTip is an HTML element where positions will be printed
     if (!toolTip) return;
 
     // Print altitude and lon/lat of camera
-    toolTip.innerHTML = ball.cameraPos[2].toPrecision(5) + "km " +
-      lonLatString(ball.cameraPos[0], ball.cameraPos[1]);
+    const alt = ball.cameraPos[2].toPrecision(5);
+    toolTip.innerHTML = alt + "km " + lonLatString(...ball.cameraPos);
 
-    if ( ball.isOnScene() ) {
-      // Add lon/lat of mouse
-      toolTip.innerHTML += "<br> Cursor: " + 
-        lonLatString(ball.cursorPos[0], ball.cursorPos[1]);
+    if (ball.isOnScene()) {
+      toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos);
     }
   }
 
   function lonLatString(longitude, latitude) {
-    // Format lon/lat into degree-minute-second strings
-    var string = ( longitude < 0.0 )
-      ? degMinSec( Math.abs(longitude) ) + "W"
-      : degMinSec(longitude) + "E";
+    const lonString = degMinSec(longitude) +
+      (longitude < 0.0) ? "W" : "E";
 
-    string += ( latitude < 0.0 )
-      ? degMinSec( Math.abs(latitude) ) + "S"
-      : degMinSec(latitude) + "N";
+    const latString = degMinSec(latitude) +
+      (latitude < 0.0) ? "S" : "N";
 
-    return string;
+    return lonString + latString;
   }
 
-  // Convert radians to degrees, minutes, seconds.
-  // Input MUST be >= 0.0
-  function degMinSec( radians ) {
-    if (radians < 0.0) return null;
-
-    var deg = Math.abs(radians) * 180.0 / Math.PI;
-    var min = 60.0 * ( deg - Math.floor(deg) );
-    var sec = 60.0 * ( min - Math.floor(min) );  
-    deg = Math.floor(deg);
-    min = Math.floor(min);
-    sec = Math.floor(sec);
+  function degMinSec(radians) {
+    const deg = Math.abs(radians) * 180.0 / Math.PI;
+    const min = 60.0 * (deg - Math.floor(deg));
+    const sec = 60.0 * (min - Math.floor(min));
 
     // Combine into fixed-width string
-    if ( deg < 10 ) {
-      deg = "&nbsp;&nbsp;" + deg;
-    } else if ( deg < 100 ) {
-      deg = "&nbsp;" + deg;
-    }
-    min = ( min < 10 ) 
-      ? "0" + min
-      : min;
-    sec = ( sec < 10 )
-      ? "0" + sec
-      : sec;
-    return deg + "&#176;" + min + "'" + sec + '"';
+    const iStr = f => Math.floor(f).toString();
+
+    const d = iStr(deg).padStart(3, "&nbsp;") + "&#176;";
+    const m = iStr(min).padStart(2, "0") + "'";
+    const s = iStr(sec).padStart(2, "0") + '"';
+
+    return d + m + s;
   }
 
   function initMarkers(globe, container) {
@@ -10732,7 +10726,7 @@ precision highp sampler2D;
     }
 
     function remove(marker) {
-      let index = markerList.indexOf(marker);
+      const index = markerList.indexOf(marker);
       if (index < 0) return;
 
       // Remove it from both the DOM and the list
@@ -10759,16 +10753,17 @@ precision highp sampler2D;
   }
 
   function setup(map, params) {
+    const { globeDiv, toolTip, center, altitude, context } = params;
     var requestID;
 
-    const ball = init$1(params.globeDiv, params.center, params.altitude);
+    const ball = init$1(globeDiv, center, altitude);
     const satView = init({
-      context: params.context,
+      context: context,
       globeRadius: ball.radius(),
       map: map.texture,
       flipY: false,
     });
-    const markers = initMarkers(ball, params.globeDiv);
+    const markers = initMarkers(ball, globeDiv);
 
     return {
       mapLoaded: map.loaded,
@@ -10789,7 +10784,7 @@ precision highp sampler2D;
       addMarker: markers.add,
       removeMarker: markers.remove,
 
-      destroy: () => (satView.destroy(), params.globeDiv.remove()),
+      destroy: () => (satView.destroy(), globeDiv.remove()),
       breakLoop: 0,
     };
 
@@ -10807,7 +10802,7 @@ precision highp sampler2D;
       }
 
       if (moving) markers.update();
-      if (ball.cursorChanged()) printToolTip(params.toolTip, ball);
+      if (ball.cursorChanged()) printToolTip(toolTip, ball);
     }
   }
 
