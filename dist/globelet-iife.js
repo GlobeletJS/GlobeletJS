@@ -10656,11 +10656,11 @@ precision highp sampler2D;
   }
 
   function lonLatString(longitude, latitude) {
-    const lonString = degMinSec(longitude) +
-      (longitude < 0.0) ? "W" : "E";
+    const ew = (longitude < 0.0) ? "W" : "E";
+    const lonString = degMinSec(longitude) + ew;
 
-    const latString = degMinSec(latitude) +
-      (latitude < 0.0) ? "S" : "N";
+    const ns = (latitude < 0.0) ? "S" : "N";
+    const latString = degMinSec(latitude) + ns;
 
     return lonString + latString;
   }
@@ -10673,7 +10673,7 @@ precision highp sampler2D;
     // Combine into fixed-width string
     const iStr = f => Math.floor(f).toString();
 
-    const d = iStr(deg).padStart(3, "&nbsp;") + "&#176;";
+    const d = iStr(deg).padStart(3, " ").replace(/ /g, "&nbsp;") + "&#176;";
     const m = iStr(min).padStart(2, "0") + "'";
     const s = iStr(sec).padStart(2, "0") + '"';
 
