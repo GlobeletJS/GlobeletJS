@@ -11,7 +11,10 @@
   "scripts": {
     "lint": "eslint --no-error-on-unmatched-pattern src examples/*/*.js",
     "build": "rollup -c build/rollup.config.js",
-    "test": "npm run lint"
+    "test": "npm run lint",
+    "pretag": "npm run build && npm test",
+    "tag": "git tag -s v$npm_package_version -m \"$npm_package_version\"",
+    "prepublishOnly": "npm run tag && git push --tags"
   },
   "repository": {
     "type": "git",
