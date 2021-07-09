@@ -1,6 +1,6 @@
 {
   "name": "globeletjs",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Lightweight vector maps on a globe",
   "main": "dist/globelet-iife.js",
   "module": "dist/globelet.js",
@@ -9,8 +9,12 @@
   ],
   "directories": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rollup -c build/rollup.config.js"
+    "lint": "eslint --no-error-on-unmatched-pattern src examples/*/*.js",
+    "build": "rollup -c build/rollup.config.js",
+    "test": "npm run lint",
+    "pretag": "npm run build && npm test",
+    "tag": "git tag -s v$npm_package_version -m \"$npm_package_version\"",
+    "prepublishOnly": "npm run tag && git push --tags"
   },
   "repository": {
     "type": "git",
@@ -32,12 +36,14 @@
   "devDependencies": {
     "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^13.0.0",
+    "eslint": "^7.30.0",
+    "eslint-config-globeletjs": "^0.0.5",
     "rollup": "^2.52.7"
   },
   "dependencies": {
-    "satellite-view": "^2.0.1",
-    "spinning-ball": "^0.2.4",
-    "tile-setter": "^0.0.6",
-    "yawgl": "^0.3.1"
+    "satellite-view": "^2.0.2",
+    "spinning-ball": "^0.2.5",
+    "tile-setter": "^0.0.7",
+    "yawgl": "^0.3.2"
   }
 }

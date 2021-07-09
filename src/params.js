@@ -1,4 +1,4 @@
-import * as yawgl from 'yawgl';
+import * as yawgl from "yawgl";
 import { version } from "../package.json";
 import sprite from "../dist/globelet.svg";
 
@@ -10,8 +10,8 @@ export function setParams(userParams) {
   // Add Elements for globe interface, svg sprite, status bar, canvas
   const globeDiv = addChild("div", "main", container);
   globeDiv.id = "globe"; // TEMPORARY: For backwards compatibility
-  globeDiv.insertAdjacentHTML('afterbegin', sprite);
-  const toolTip = addChild("div", "status", globeDiv);
+  globeDiv.insertAdjacentHTML("afterbegin", sprite);
+  const toolTip = addChild( "div", "status", globeDiv);
   const canvas = addChild("canvas", "map", globeDiv);
 
   // Get a WebGL context and add yawgl functionality

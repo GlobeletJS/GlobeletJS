@@ -20,6 +20,8 @@ a few things, but it will do them well.
 [OpenMapTiles]: https://openmaptiles.org/
 [CesiumJS]: https://github.com/AnalyticalGraphicsInc/cesium
 
+![tests](https://github.com/GlobeletJS/GlobeletJS/actions/workflows/node.js.yml/badge.svg)
+
 ## How to add GlobeletJS code to your webpage
 GlobeletJS is provided as an ESM import. Define your script tag as
 `type="module"`, then import the module:
@@ -168,25 +170,9 @@ tile-stencil][tile-stencil-limitations] and the [tile-gl TODO list][tile-gl-todo
 for an (incomplete) list of what is not supported.
 
 We welcome your feedback on what additional features you would like to see
-supported!
+supported. Or better yet, try adding them yourself! See the
+[contributing guidelines](./CONTRIBUTING.md) for how to get started.
+
 
 [tile-stencil-limitations]: https://github.com/GlobeletJS/tile-stencil#un-supported-features
 [tile-gl-todo]: https://github.com/GlobeletJS/tile-gl#todo
-
-## About the code (for advanced users)
-For development on Node.js, you can install the package from NPM:
-```bash
-npm install --save globeletjs
-```
-
-GlobeletJS works by tying together several other more specialized modules.
-1. We render vector map data to a rectangular texture using [tile-setter][]
-2. Then we wrap the map around a globe using [satellite-view][]
-3. To animate the camera position, we incorporate [spinning-ball][]
-
-Also, to save on typing, we delegate the low-level WebGL calls to [yawgl][]
-
-[tile-setter]: https://github.com/GlobeletJS/tile-setter
-[satellite-view]: https://github.com/GlobeletJS/satellite-view
-[spinning-ball]: https://github.com/GlobeletJS/spinning-ball
-[yawgl]: https://github.com/GlobeletJS/yawgl

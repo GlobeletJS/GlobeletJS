@@ -1,8 +1,7 @@
 import { setParams } from "./params.js";
 import { initMap } from "./map.js";
-import * as spinningBall from 'spinning-ball';
-import * as satelliteView from 'satellite-view';
-import { initEventHandler } from "./events.js";
+import * as spinningBall from "spinning-ball";
+import * as satelliteView from "satellite-view";
 import { printToolTip } from "./tooltip.js";
 import { initMarkers } from "./markers.js";
 
@@ -14,17 +13,17 @@ export function initGlobe(userParams) {
 }
 
 function setup(map, params) {
+  const { globeDiv, toolTip, center, altitude, context } = params;
   var requestID;
 
-  const ball = spinningBall.init(params.globeDiv, params.center, params.altitude);
+  const ball = spinningBall.init(globeDiv, center, altitude);
   const satView = satelliteView.init({
-    context: params.context,
+    context: context,
     globeRadius: ball.radius(),
     map: map.texture,
     flipY: false,
   });
-  const eventHandler = initEventHandler();
-  const markers = initMarkers(ball, params.globeDiv);
+  const markers = initMarkers(ball, globeDiv);
 
   return {
     mapLoaded: map.loaded,
@@ -45,7 +44,7 @@ function setup(map, params) {
     addMarker: markers.add,
     removeMarker: markers.remove,
 
-    destroy: () => (satView.destroy(), params.globeDiv.remove()),
+    destroy: () => (satView.destroy(), globeDiv.remove()),
     breakLoop: 0,
   };
 
@@ -63,6 +62,6 @@ function setup(map, params) {
     }
 
     if (moving) markers.update();
-    if (ball.cursorChanged()) printToolTip(params.toolTip, ball);
+    if (ball.cursorChanged()) printToolTip(toolTip, ball);
   }
 }

@@ -1,55 +1,37 @@
-// Update tooltip text when mouse or scene changes
 export function printToolTip(toolTip, ball) {
   // Input toolTip is an HTML element where positions will be printed
   if (!toolTip) return;
 
   // Print altitude and lon/lat of camera
-  toolTip.innerHTML = ball.cameraPos[2].toPrecision(5) + "km " +
-    lonLatString(ball.cameraPos[0], ball.cameraPos[1]);
+  const alt = ball.cameraPos[2].toPrecision(5);
+  toolTip.innerHTML = alt + "km " + lonLatString(...ball.cameraPos);
 
-  if ( ball.isOnScene() ) {
-    // Add lon/lat of mouse
-    toolTip.innerHTML += "<br> Cursor: " + 
-      lonLatString(ball.cursorPos[0], ball.cursorPos[1]);
+  if (ball.isOnScene()) {
+    toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos);
   }
 }
 
 function lonLatString(longitude, latitude) {
-  // Format lon/lat into degree-minute-second strings
-  var string = ( longitude < 0.0 )
-    ? degMinSec( Math.abs(longitude) ) + "W"
-    : degMinSec(longitude) + "E";
+  const ew = (longitude < 0.0) ? "W" : "E";
+  const lonString = degMinSec(longitude) + ew;
 
-  string += ( latitude < 0.0 )
-    ? degMinSec( Math.abs(latitude) ) + "S"
-    : degMinSec(latitude) + "N";
+  const ns = (latitude < 0.0) ? "S" : "N";
+  const latString = degMinSec(latitude) + ns;
 
-  return string;
+  return lonString + latString;
 }
 
-// Convert radians to degrees, minutes, seconds.
-// Input MUST be >= 0.0
-function degMinSec( radians ) {
-  if (radians < 0.0) return null;
-
-  var deg = Math.abs(radians) * 180.0 / Math.PI;
-  var min = 60.0 * ( deg - Math.floor(deg) );
-  var sec = 60.0 * ( min - Math.floor(min) );  
-  deg = Math.floor(deg);
-  min = Math.floor(min);
-  sec = Math.floor(sec);
+function degMinSec(radians) {
+  const deg = Math.abs(radians) * 180.0 / Math.PI;
+  const min = 60.0 * (deg - Math.floor(deg));
+  const sec = 60.0 * (min - Math.floor(min));
 
   // Combine into fixed-width string
-  if ( deg < 10 ) {
-    deg = "&nbsp;&nbsp;" + deg;
-  } else if ( deg < 100 ) {
-    deg = "&nbsp;" + deg;
-  }
-  min = ( min < 10 ) 
-    ? "0" + min
-    : min;
-  sec = ( sec < 10 )
-    ? "0" + sec
-    : sec;
-  return deg + "&#176;" + min + "'" + sec + '"';
+  const iStr = f => Math.floor(f).toString();
+
+  const d = iStr(deg).padStart(3, " ").replace(/ /g, "&nbsp;") + "&#176;";
+  const m = iStr(min).padStart(2, "0") + "'";
+  const s = iStr(sec).padStart(2, "0") + '"';
+
+  return d + m + s;
 }
