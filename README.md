@@ -174,5 +174,6 @@ supported. Or better yet, try adding them yourself! See the
 [contributing guidelines](./CONTRIBUTING.md) for how to get started.
 
 
+[tile-setter]: https://github.com/GlobeletJS/tile-setter
 [tile-stencil-limitations]: https://github.com/GlobeletJS/tile-stencil#un-supported-features
 [tile-gl-todo]: https://github.com/GlobeletJS/tile-gl#todo

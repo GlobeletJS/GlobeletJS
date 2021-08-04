@@ -18,10 +18,11 @@
   <script type="module">
     import * as globeletjs from "../../dist/globelet.js";
 
+    const degrees = 180.0 / Math.PI;
     globeletjs.initGlobe({
       container: 'globe',
       style: "./klokantech-basic-style-geojson.json",
-      center: [-100, 38.5],
+      center: [-100.0 / degrees, 38.5 / degrees],
       altitude: 6280,
     }).then(globe => {
       var spot;

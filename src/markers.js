@@ -53,7 +53,7 @@ export function initMarkers(globe, container) {
   }
 
   function setPosition(marker) {
-    const visible = globe.lonLatToScreenXY(marker.screenPos, marker.lonLat);
+    const visible = globe.project(marker.screenPos, marker.lonLat);
 
     Object.assign(marker.element.style, {
       display: (visible) ? "inline-block" : "none",

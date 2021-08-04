@@ -12,6 +12,7 @@
     "lint": "eslint --no-error-on-unmatched-pattern src examples/*/*.js",
     "build": "rollup -c build/rollup.config.js",
     "test": "npm run lint",
+    "postversion": "npm run build",
     "pretag": "npm run build && npm test",
     "tag": "git tag -s v$npm_package_version -m \"$npm_package_version\"",
     "prepublishOnly": "npm run tag && git push --tags"
@@ -42,7 +43,7 @@
   },
   "dependencies": {
     "satellite-view": "^2.0.2",
-    "spinning-ball": "^0.2.5",
+    "spinning-ball": "github:GlobeletJS/spinning-ball",
     "tile-setter": "^0.0.7",
     "yawgl": "^0.3.2"
   }

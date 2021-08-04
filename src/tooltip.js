@@ -3,11 +3,12 @@ export function printToolTip(toolTip, ball) {
   if (!toolTip) return;
 
   // Print altitude and lon/lat of camera
-  const alt = ball.cameraPos[2].toPrecision(5);
-  toolTip.innerHTML = alt + "km " + lonLatString(...ball.cameraPos);
+  const cameraPos = ball.cameraPos();
+  const alt = cameraPos[2].toPrecision(5);
+  toolTip.innerHTML = alt + "km " + lonLatString(...cameraPos);
 
   if (ball.isOnScene()) {
-    toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos);
+    toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos());
   }
 }
 
