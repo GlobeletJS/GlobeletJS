@@ -116,10 +116,10 @@ globePromise.then(globeAPI => {
   velocity and cursor inputs since the last update. Input is a timestamp in
   milliseconds as supplied by [requestAnimationFrame][]. For animation loops
   managed by the parent program
-- `cameraPos`: Link to the camera position as reported by [spinning-ball][] 
-- `cursorPos`: Link to the cursor position as reported by [spinning-ball][]
+- `cameraPos()`: Returns the camera position as reported by [spinning-ball][] 
+- `cursorPos()`: Returns the cursor position as reported by [spinning-ball][]
 - `isMoving()`: Returns the value of the camMoving flag in [spinning-ball][]
-- `wasTapped`: Returns the value of the wasTapped flag in [spinning-ball][]
+- `wasTapped()`: Returns the value of the wasTapped flag in [spinning-ball][]
 - `addMarker(options)`: Adds a marker to the globe. See markers section below
 - `removeMarker(marker)`: Removes a given marker from memory and from the DOM
 - `destroy()`: Clears memory / removes elements from document
