@@ -18,11 +18,10 @@
   <script type="module">
     import * as globeletjs from "../../dist/globelet.js";
 
-    const degrees = 180.0 / Math.PI;
     globeletjs.initGlobe({
       container: 'globe',
       style: "./klokantech-basic-style-geojson.json",
-      center: [-100.0 / degrees, 38.5 / degrees],
+      center: [-100.0, 38.5],
       altitude: 6280,
     }).then(globe => {
       var spot;
@@ -35,8 +34,8 @@
         // Check for a mountain under the cursor
         let mountain = globe.select("mountains", 12);
         if (mountain) {
-          let lonLat = mountain.geometry.coordinates;
-          spot = globe.addMarker({ lonLat, type: "spot" });
+          let position = mountain.geometry.coordinates;
+          spot = globe.addMarker({ position, type: "spot" });
         }
 
         requestID = requestAnimationFrame(animate);

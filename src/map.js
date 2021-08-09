@@ -5,12 +5,12 @@ export function initMap(params) {
   const framebuffer = context.initFramebuffer({ width, height });
 
   return tileSetter
-    .init({ context, framebuffer, style, mapboxToken, units: "radians" })
+    .init({ context, framebuffer, style, mapboxToken })
     .promise.then(api => setup(api, context, framebuffer.sampler));
 }
 
 function setup(api, context, sampler) {
-  var loadStatus = 0;
+  let loadStatus = 0;
 
   const texture = {
     sampler,

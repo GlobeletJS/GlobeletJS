@@ -7,11 +7,11 @@ export function initMarkers(globe, container) {
     update: () => markerList.forEach(setPosition),
   };
 
-  function add({ element, type, lonLat, altitude }) {
+  function add({ element, type, position }) {
+    const [lon, lat, alt = 0.0] = position;
     const marker = {
       element: getMarkerElement(element, type),
-      // TODO: bad naming? lonLat includes altitude. Altitude currently unused
-      lonLat: new Float64Array([...lonLat, altitude || 0.0]),
+      position: new Float64Array([lon, lat, alt]),
       screenPos: new Float64Array(2),
     };
 
@@ -53,7 +53,7 @@ export function initMarkers(globe, container) {
   }
 
   function setPosition(marker) {
-    const visible = globe.project(marker.screenPos, marker.lonLat);
+    const visible = globe.project(marker.screenPos, marker.position);
 
     Object.assign(marker.element.style, {
       display: (visible) ? "inline-block" : "none",

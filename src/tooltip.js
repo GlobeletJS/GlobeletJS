@@ -22,8 +22,8 @@ function lonLatString(longitude, latitude) {
   return lonString + latString;
 }
 
-function degMinSec(radians) {
-  const deg = Math.abs(radians) * 180.0 / Math.PI;
+function degMinSec(degrees) {
+  const deg = Math.abs(degrees);
   const min = 60.0 * (deg - Math.floor(deg));
   const sec = 60.0 * (min - Math.floor(min));
 

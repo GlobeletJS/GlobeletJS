@@ -138,14 +138,14 @@ where `options` is an object with the following properties:
 - `type`: The type of marker. If `type === "spot"`, the marker element will
   default to a circular SVG; otherwise it defaults to a standard placemarker 
   SVG
-- `lonLat`: A 2-element Array containing longitude and latitude of the desired
-  marker position, in radians
+- `position`: An Array containing longitude and latitude of the desired
+  marker position, in degrees, and (optionally) the altitude in kilometers
 
 The returned `marker` object has the following properties:
 - `element`: Back-link to the HTML element used to represent the marker
   position
-- `lonLat`: A Float64Array containing the longitude and latitude of the marker
-  position, in radians
+- `position`: A Float64Array containing the longitude and latitude of the marker
+  position, in degrees, and its altitude in kilometers
 - `screenPos`: A 2-element Array containing the current screen position of the
   marker, in pixels from top left
 

@@ -38,13 +38,13 @@
     "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^13.0.0",
     "eslint": "^7.30.0",
-    "eslint-config-globeletjs": "^0.0.5",
+    "eslint-config-globeletjs": "^0.0.6",
     "rollup": "^2.52.7"
   },
   "dependencies": {
-    "satellite-view": "^2.0.2",
-    "spinning-ball": "github:GlobeletJS/spinning-ball",
-    "tile-setter": "^0.0.7",
-    "yawgl": "^0.3.2"
+    "satellite-view": "^2.1.0",
+    "spinning-ball": "^0.3.0",
+    "tile-setter": "^0.0.10",
+    "yawgl": "^0.3.3"
   }
 }
