@@ -125,6 +125,7 @@ globePromise.then(globeAPI => {
 - `destroy()`: Clears memory / removes elements from document
 
 [requestAnimationFrame]: https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
+[spinning-ball]: https://github.com/GlobeletJS/spinning-ball
 
 ## How to add and remove markers
 A marker can be added to the globe as follows:

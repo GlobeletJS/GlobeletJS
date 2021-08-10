@@ -76,4 +76,10 @@ from `package.json`. Before executing `npm publish`, make sure:
   [semver][]
 3. Your GPG key is set up and ready for [signing the tag][signing]
 
+After publishing, the commit will be tagged *in your personal fork*. The tag
+still needs to be pushed to the upstream repository:
+```bash
+git push upstream --tags
+```
+
 [signing]: https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work
