@@ -116,10 +116,10 @@ globePromise.then(globeAPI => {
   velocity and cursor inputs since the last update. Input is a timestamp in
   milliseconds as supplied by [requestAnimationFrame][]. For animation loops
   managed by the parent program
-- `cameraPos`: Link to the camera position as reported by [spinning-ball][] 
-- `cursorPos`: Link to the cursor position as reported by [spinning-ball][]
+- `cameraPos()`: Returns the camera position as reported by [spinning-ball][] 
+- `cursorPos()`: Returns the cursor position as reported by [spinning-ball][]
 - `isMoving()`: Returns the value of the camMoving flag in [spinning-ball][]
-- `wasTapped`: Returns the value of the wasTapped flag in [spinning-ball][]
+- `wasTapped()`: Returns the value of the wasTapped flag in [spinning-ball][]
 - `addMarker(options)`: Adds a marker to the globe. See markers section below
 - `removeMarker(marker)`: Removes a given marker from memory and from the DOM
 - `destroy()`: Clears memory / removes elements from document
@@ -138,14 +138,14 @@ where `options` is an object with the following properties:
 - `type`: The type of marker. If `type === "spot"`, the marker element will
   default to a circular SVG; otherwise it defaults to a standard placemarker 
   SVG
-- `lonLat`: A 2-element Array containing longitude and latitude of the desired
-  marker position, in radians
+- `position`: An Array containing longitude and latitude of the desired
+  marker position, in degrees, and (optionally) the altitude in kilometers
 
 The returned `marker` object has the following properties:
 - `element`: Back-link to the HTML element used to represent the marker
   position
-- `lonLat`: A Float64Array containing the longitude and latitude of the marker
-  position, in radians
+- `position`: A Float64Array containing the longitude and latitude of the marker
+  position, in degrees, and its altitude in kilometers
 - `screenPos`: A 2-element Array containing the current screen position of the
   marker, in pixels from top left
 
@@ -174,5 +174,6 @@ supported. Or better yet, try adding them yourself! See the
 [contributing guidelines](./CONTRIBUTING.md) for how to get started.
 
 
+[tile-setter]: https://github.com/GlobeletJS/tile-setter
 [tile-stencil-limitations]: https://github.com/GlobeletJS/tile-stencil#un-supported-features
 [tile-gl-todo]: https://github.com/GlobeletJS/tile-gl#todo

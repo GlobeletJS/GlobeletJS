@@ -5,13 +5,12 @@ export function initMap(params) {
   const framebuffer = context.initFramebuffer({ width, height });
 
   return tileSetter
-    .init({ context, framebuffer, style, mapboxToken, units: "radians" })
-    .promise.then(api => setup(api, context, framebuffer.sampler))
-    .catch(console.log);
+    .init({ context, framebuffer, style, mapboxToken })
+    .promise.then(api => setup(api, context, framebuffer.sampler));
 }
 
 function setup(api, context, sampler) {
-  var loadStatus = 0;
+  let loadStatus = 0;
 
   const texture = {
     sampler,
@@ -37,7 +36,7 @@ function setup(api, context, sampler) {
     const k = 1.0 / dMap;
     const zoom = Math.log2(k) - 9;
 
-    api.setCenterZoom(camPos, zoom, "radians");
+    api.setCenterZoom(camPos, zoom);
     loadStatus = api.draw();
 
     texture.scale.set(api.getScale());
@@ -47,6 +46,6 @@ function setup(api, context, sampler) {
   }
 
   function select(layer, point, radius) {
-    return api.select({ layer, point, radius, units: "radians" });
+    return api.select({ layer, point, radius });
   }
 }

@@ -14,20 +14,24 @@ export function initGlobe(userParams) {
 
 function setup(map, params) {
   const { globeDiv, toolTip, center, altitude, context } = params;
-  var requestID;
+  let requestID;
 
-  const ball = spinningBall.init(globeDiv, center, altitude);
+  const ball = spinningBall.init({
+    display: globeDiv,
+    position: [center[0], center[1], altitude],
+  });
   const satView = satelliteView.init({
     context: context,
     globeRadius: ball.radius(),
     map: map.texture,
     flipY: false,
+    units: "degrees",
   });
   const markers = initMarkers(ball, globeDiv);
 
   return {
     mapLoaded: map.loaded,
-    select: (layer, dxy) => map.select(layer, ball.cursorPos, dxy),
+    select: (layer, dxy) => map.select(layer, ball.cursorPos(), dxy),
     showLayer: map.showLayer,
     hideLayer: map.hideLayer,
     getZoom: map.getZoom,
@@ -54,11 +58,11 @@ function setup(map, params) {
   }
 
   function update(time) {
-    var moving = ball.update(time * 0.001); // Convert time from ms to seconds
+    const moving = ball.update(time * 0.001); // Convert time from ms to seconds
 
     if (moving || map.loaded() < 1.0) {
-      map.draw(ball.cameraPos, ball.radius(), ball.view);
-      satView.draw(ball.cameraPos, ball.view.maxRay);
+      map.draw(ball.cameraPos(), ball.radius(), ball.view);
+      satView.draw(ball.cameraPos(), ball.view.maxRay);
     }
 
     if (moving) markers.update();
