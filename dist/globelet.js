@@ -461,7 +461,7 @@ function initContext(gl) {
   }
 }
 
-var version = "0.1.0";
+var version = "0.1.1";
 
 var sprite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sprite">
   <!--Default image for favicon-->
@@ -521,6 +521,9 @@ function setParams$3(userParams) {
   // Get the containing DIV element, and set its CSS class
   const container = document.getElementById(userParams.container);
   container.classList.add("globelet");
+  if (container.clientWidth <= 64 || container.clientHeight <= 64) {
+    throw Error("GlobeletJS: container must be at least 64x64 pixels!");
+  }
 
   // Add Elements for globe interface, svg sprite, status bar, canvas
   const globeDiv = addChild("div", "main", container);
@@ -712,34 +715,22 @@ function initCoords({ getViewport, center, zoom, clampY, projection }) {
   }
 }
 
-function initBackground(context) {
-  function initPainter(style) {
-    const { paint } = style;
-
-    return function({ zoom }) {
-      const opacity = paint["background-opacity"](zoom);
-      const color = paint["background-color"](zoom);
-      context.clear(color.map(c => c * opacity));
-    };
-  }
-
-  return { initPainter };
-}
-
 var preamble = `precision highp float;
+
+const float TWOPI = 6.28318530718;
 
 attribute vec3 tileCoords;
 
 uniform vec4 mapCoords;   // x, y, z, extent of tileset[0]
 uniform vec3 mapShift;    // translate and scale of tileset[0]
 
-uniform vec3 screenScale; // 2 / width, -2 / height, pixRatio
+uniform vec4 screenScale; // 2 / width, -2 / height, pixRatio, cameraScale
 
 vec2 tileToMap(vec2 tilePos) {
   // Find distance of this tile from top left tile, in tile units
   float zoomFac = exp2(mapCoords.z - tileCoords.z);
   vec2 dTile = zoomFac * tileCoords.xy - mapCoords.xy;
-  // tileCoords.x and mapCoords.x are both wrapped to the range [0..exp(z)]
+  // tileCoords.x and mapCoords.x are both wrapped to the range [0..exp2(z)]
   // If the right edge of the tile is left of the map, we need to unwrap dTile
   dTile.x += (dTile.x + zoomFac <= 0.0) ? exp2(mapCoords.z) : 0.0;
 
@@ -758,6 +749,119 @@ vec4 mapToClip(vec2 mapPos, float z) {
 }
 `;
 
+var simpleScale = `float styleScale(vec2 tilePos) {
+  return screenScale.z;
+}
+`;
+
+var mercatorScale = `float mercatorScale(float yWeb) {
+  // Convert Web Mercator Y to standard Mercator Y
+  float yMerc = TWOPI * (0.5 - yWeb);
+  return 0.5 * (exp(yMerc) + exp(-yMerc)); // == cosh(y)
+}
+
+float styleScale(vec2 tilePos) {
+  float y = (tileCoords.y + tilePos.y / mapCoords.w) / exp2(tileCoords.z);
+  return screenScale.z * mercatorScale(y) / screenScale.w;
+}
+`;
+
+function initSetters(pairs, uniformSetters) {
+  return pairs
+    .filter(([get]) => get.type !== "property")
+    .map(([get, key]) => {
+      const set = uniformSetters[key];
+      return (z, f) => set(get(z, f));
+    });
+}
+
+function initVectorTilePainter(context, layerId, setAtlas) {
+  return function(tileBox, translate, scale, framebufferHeight) {
+    const { x, y, tile } = tileBox;
+    const { layers, atlas } = tile.data;
+
+    const data = layers[layerId];
+    if (!data) return;
+
+    const [x0, y0] = [x, y].map((c, i) => (c + translate[i]) * scale);
+    const yflip = framebufferHeight - y0 - scale;
+    context.clipRect(x0, yflip, scale, scale);
+
+    if (setAtlas && atlas) setAtlas(atlas);
+
+    context.draw(data.buffers);
+  };
+}
+
+function initGrid(context, framebufferSize, program) {
+  const { use, uniformSetters } = program;
+  const { screenScale, mapCoords, mapShift } = uniformSetters;
+
+  function setGrid(tileset, pixRatio = 1) {
+    const { x, y, z } = tileset[0];
+    const numTiles = 1 << z;
+    const xw = x - Math.floor(x / numTiles) * numTiles;
+    const extent = 512; // TODO: don't assume this!!
+    mapCoords([xw, y, z, extent]);
+
+    const { translate, scale } = tileset;
+    const pixScale = scale * pixRatio;
+    const [dx, dy] = [x, y].map((c, i) => (c + translate[i]) * pixScale);
+
+    // At low zooms, some tiles may be repeated on opposite ends of the map
+    // We split them into subsets, with different values of mapShift
+    // NOTE: Only accounts for repetition across X!
+    const subsets = [0, 1, 2].map(repeat => {
+      const shift = repeat * numTiles;
+      const tiles = tileset.filter(tile => {
+        const delta = tile.x - x;
+        return (delta >= shift && delta < shift + numTiles);
+      });
+      const setter = () => mapShift([dx + shift * pixScale, dy, pixScale]);
+      return { tiles, setter };
+    }).filter(set => set.tiles.length);
+
+    return { translate, scale: pixScale, subsets };
+  }
+
+  function initTilesetPainter(id, styleMap, setAtlas) {
+    const zoomFuncs = initSetters(styleMap, uniformSetters);
+    const paintTile = initVectorTilePainter(context, id, setAtlas);
+
+    return function({ tileset, zoom, pixRatio = 1, cameraScale = 1.0 }) {
+      if (!tileset || !tileset.length) return;
+
+      use();
+      const { width, height } = framebufferSize;
+      screenScale([2 / width, -2 / height, pixRatio, cameraScale]);
+      const { translate, scale, subsets } = setGrid(tileset, pixRatio);
+
+      zoomFuncs.forEach(f => f(zoom));
+
+      subsets.forEach(({ setter, tiles }) => {
+        setter();
+        tiles.forEach(box => paintTile(box, translate, scale, height));
+      });
+    };
+  }
+
+  return initTilesetPainter;
+}
+
+function initBackground(context) {
+  function initPainter(style) {
+    const { paint } = style;
+
+    return function({ zoom }) {
+      const opacity = paint["background-opacity"](zoom);
+      const color = paint["background-color"](zoom);
+      context.clear(color.map(c => c * opacity));
+    };
+  }
+
+  return { initPainter };
+}
+
 var vert$3 = `attribute vec2 quadPos; // Vertices of the quad instance
 attribute vec2 circlePos;
 attribute float radius;
@@ -773,7 +877,7 @@ void main() {
 
   // Shift to the appropriate corner of the current instance quad
   delta = 2.0 * quadPos * (radius + 1.0);
-  vec2 dPos = delta * screenScale.z;
+  vec2 dPos = delta * styleScale(circlePos);
 
   strokeStyle = color * opacity;
   // TODO: normalize delta? Then can drop one varying
@@ -798,97 +902,10 @@ void main() {
 }
 `;
 
-function initGrid(framebufferSize, useProgram, setters) {
-  const { screenScale, mapCoords, mapShift } = setters;
+function initCircle(context) {
+  const { initPaintProgram, initQuad, initAttributes } = context;
 
-  return function(tileset, pixRatio = 1) {
-    useProgram();
-
-    const { width, height } = framebufferSize;
-    screenScale([2 / width, -2 / height, pixRatio]);
-
-    const { x, y, z } = tileset[0];
-    const numTiles = 1 << z;
-    const xw = x - Math.floor(x / numTiles) * numTiles;
-    const extent = 512; // TODO: don't assume this!!
-    mapCoords([xw, y, z, extent]);
-
-    const { translate, scale } = tileset;
-    const pixScale = scale * pixRatio;
-    const [dx, dy] = [x, y].map((c, i) => (c + translate[i]) * pixScale);
-
-    // At low zooms, some tiles may be repeated on opposite ends of the map
-    // We split them into subsets, with different values of mapShift
-    // NOTE: Only accounts for repetition across X!
-    const subsets = [];
-    [0, 1, 2].forEach(addSubset);
-
-    function addSubset(repeat) {
-      const shift = repeat * numTiles;
-      const tiles = tileset.filter(tile => {
-        const delta = tile.x - x;
-        return (delta >= shift && delta < shift + numTiles);
-      });
-      if (!tiles.length) return;
-      const setter = () => mapShift([dx + shift * pixScale, dy, pixScale]);
-      subsets.push({ tiles, setter });
-    }
-
-    return { translate, scale: pixScale, subsets };
-  };
-}
-
-function initTilesetPainter(setGrid, zoomFuncs, paintTile) {
-  return function({ tileset, zoom, pixRatio = 1 }) {
-    if (!tileset || !tileset.length) return;
-
-    const { translate, scale, subsets } = setGrid(tileset, pixRatio);
-
-    zoomFuncs.forEach(f => f(zoom));
-
-    subsets.forEach(({ setter, tiles }) => {
-      setter();
-      tiles.forEach(box => paintTile(box, translate, scale));
-    });
-  };
-}
-
-function initSetters(pairs, uniformSetters) {
-  return pairs
-    .filter(([get]) => get.type !== "property")
-    .map(([get, key]) => {
-      const set = uniformSetters[key];
-      return (z, f) => set(get(z, f));
-    });
-}
-
-function initVectorTilePainter(
-  context, framebufferSize, layerId, setAtlas
-) {
-  return function(tileBox, translate, scale) {
-    const { x, y, tile } = tileBox;
-    const { layers, atlas } = tile.data;
-
-    const data = layers[layerId];
-    if (!data) return;
-
-    const [x0, y0] = [x, y].map((c, i) => (c + translate[i]) * scale);
-    const yflip = framebufferSize.height - y0 - scale;
-    context.clipRect(x0, yflip, scale, scale);
-
-    if (setAtlas && atlas) setAtlas(atlas);
-
-    context.draw(data.buffers);
-  };
-}
-
-function initCircle(context, framebufferSize, preamble) {
-  const { initProgram, initQuad, initAttribute } = context;
-
-  const program = initProgram(preamble + vert$3, frag$3);
-  const { use, uniformSetters, constructVao } = program;
-
-  const grid = initGrid(framebufferSize, use, uniformSetters);
+  const { constructVao, initTilesetPainter } = initPaintProgram(vert$3, frag$3);
 
   const quadPos = initQuad({ x0: -0.5, y0: -0.5, x1: 0.5, y1: 0.5 });
 
@@ -901,12 +918,7 @@ function initCircle(context, framebufferSize, preamble) {
   };
 
   function load(buffers) {
-    const attributes = Object.entries(attrInfo).reduce((d, [key, info]) => {
-      const data = buffers[key];
-      if (data) d[key] = initAttribute(Object.assign({ data }, info));
-      return d;
-    }, { quadPos });
-
+    const attributes = initAttributes(attrInfo, buffers, { quadPos });
     const vao = constructVao({ attributes });
     return { vao, instanceCount: buffers.circlePos.length / 2 };
   }
@@ -914,14 +926,13 @@ function initCircle(context, framebufferSize, preamble) {
   function initPainter(style) {
     const { id, paint } = style;
 
-    const zoomFuncs = initSetters([
+    const zoomFuncs = [
       [paint["circle-radius"],  "radius"],
       [paint["circle-color"],   "color"],
       [paint["circle-opacity"], "opacity"],
-    ], uniformSetters);
+    ];
 
-    const paintTile = initVectorTilePainter(context, framebufferSize, id);
-    return initTilesetPainter(grid, zoomFuncs, paintTile);
+    return initTilesetPainter(id, zoomFuncs);
   }
 
   return { load, initPainter };
@@ -1038,7 +1049,7 @@ void main() {
 `;
 
 function initLineLoader(context, constructVao) {
-  const { initQuad, createBuffer, initAttribute } = context;
+  const { initQuad, createBuffer, initAttribute, initAttributes } = context;
 
   const quadPos = initQuad({ x0: 0.0, y0: -0.5, x1: 1.0, y1: 0.5 });
 
@@ -1071,30 +1082,23 @@ function initLineLoader(context, constructVao) {
       return initAttribute({ buffer, numComponents, stride, offset });
     }
 
-    const attributes = Object.entries(attrInfo).reduce((d, [key, info]) => {
-      const data = buffers[key];
-      if (data) d[key] = initAttribute(Object.assign({ data }, info));
-      return d;
-    }, geometryAttributes);
-
+    const attributes = initAttributes(attrInfo, buffers, geometryAttributes);
     const vao = constructVao({ attributes });
 
     return { vao, instanceCount: lines.length / numComponents - 3 };
   };
 }
 
-function initLine(context, framebufferSize, preamble) {
-  const program = context.initProgram(preamble + vert$2, frag$2);
-  const { use, uniformSetters, constructVao } = program;
-
-  const grid = initGrid(framebufferSize, use, uniformSetters);
+function initLine(context) {
+  const program = context.initPaintProgram(vert$2, frag$2);
+  const { constructVao, initTilesetPainter } = program;
 
   const load = initLineLoader(context, constructVao);
 
   function initPainter(style) {
     const { id, layout, paint } = style;
 
-    const zoomFuncs = initSetters([
+    const zoomFuncs = [
       // TODO: move these to serialization step??
       // [layout["line-cap"],      "lineCap"],
       // [layout["line-join"],     "lineJoin"],
@@ -1106,10 +1110,9 @@ function initLine(context, framebufferSize, preamble) {
       // line-gap-width,
       // line-translate, line-translate-anchor,
       // line-offset, line-blur, line-gradient, line-pattern
-    ], uniformSetters);
+    ];
 
-    const paintTile = initVectorTilePainter(context, framebufferSize, id);
-    return initTilesetPainter(grid, zoomFuncs, paintTile);
+    return initTilesetPainter(id, zoomFuncs);
   }
 
   return { load, initPainter };
@@ -1141,8 +1144,10 @@ void main() {
 }
 `;
 
-function initFillLoader(context, constructVao) {
-  const { initAttribute, initIndices } = context;
+function initFill(context) {
+  const { initPaintProgram, initAttributes, initIndices } = context;
+
+  const { constructVao, initTilesetPainter } = initPaintProgram(vert$1, frag$1);
 
   const attrInfo = {
     position: { numComponents: 2, divisor: 0 },
@@ -1151,63 +1156,48 @@ function initFillLoader(context, constructVao) {
     opacity: { numComponents: 1, divisor: 0 },
   };
 
-  return function(buffers) {
-    const attributes = Object.entries(attrInfo).reduce((d, [key, info]) => {
-      const data = buffers[key];
-      if (data) d[key] = initAttribute(Object.assign({ data }, info));
-      return d;
-    }, {});
-
+  function load(buffers) {
+    const attributes = initAttributes(attrInfo, buffers);
     const indices = initIndices({ data: buffers.indices });
-    const count = buffers.indices.length;
-
     const vao = constructVao({ attributes, indices });
-    return { vao, indices, count };
-  };
-}
-
-function initFill(context, framebufferSize, preamble) {
-  const program = context.initProgram(preamble + vert$1, frag$1);
-  const { use, uniformSetters, constructVao } = program;
-  const grid = initGrid(framebufferSize, use, uniformSetters);
-
-  const load = initFillLoader(context, constructVao);
+    return { vao, indices, count: buffers.indices.length };
+  }
 
   function initPainter(style) {
     const { id, paint } = style;
 
-    const zoomFuncs = initSetters([
+    const zoomFuncs = [
       [paint["fill-color"],     "color"],
       [paint["fill-opacity"],   "opacity"],
       [paint["fill-translate"], "translation"],
-    ], uniformSetters);
+    ];
 
-    const paintTile = initVectorTilePainter(context, framebufferSize, id);
-    return initTilesetPainter(grid, zoomFuncs, paintTile);
+    return initTilesetPainter(id, zoomFuncs);
   }
 
   return { load, initPainter };
 }
 
 var vert = `attribute vec2 quadPos;  // Vertices of the quad instance
-attribute vec2 labelPos; // x, y
-attribute vec3 charPos;  // dx, dy, scale (relative to labelPos)
+attribute vec3 labelPos; // x, y, font size scalar
+attribute vec4 charPos;  // dx, dy (relative to labelPos), w, h
 attribute vec4 sdfRect;  // x, y, w, h
 attribute vec4 color;
 attribute float opacity;
 
+varying float taperWidth;
 varying vec2 texCoord;
 varying vec4 fillStyle;
 
 void main() {
+  taperWidth = labelPos.z * screenScale.z;
+  texCoord = sdfRect.xy + sdfRect.zw * quadPos;
   fillStyle = color * opacity;
 
-  texCoord = sdfRect.xy + sdfRect.zw * quadPos;
-
-  vec2 mapPos = tileToMap(labelPos);
+  vec2 mapPos = tileToMap(labelPos.xy);
 
   // Shift to the appropriate corner of the current instance quad
-  vec2 dPos = (charPos.xy + sdfRect.zw * quadPos) * charPos.z * screenScale.z;
+  vec2 dPos = (charPos.xy + charPos.zw * quadPos) * styleScale(labelPos.xy);
 
   gl_Position = mapToClip(mapPos + dPos, 0.0);
 }
@@ -1216,90 +1206,91 @@ void main() {
 var frag = `precision highp float;
 
 uniform sampler2D sdf;
-uniform vec2 sdfDim;
 
 varying vec4 fillStyle;
 varying vec2 texCoord;
+varying float taperWidth;
 
 void main() {
-  float sdfVal = texture2D(sdf, texCoord / sdfDim).a;
-  // Find taper width: ~ dScreenPixels / dTexCoord
-  float screenScale = 1.414 / length(fwidth(texCoord));
-  float screenDist = screenScale * (191.0 - 255.0 * sdfVal) / 32.0;
+  float sdfVal = texture2D(sdf, texCoord).a;
+  float screenDist = taperWidth * (191.0 - 255.0 * sdfVal) / 32.0;
 
-  // TODO: threshold 0.5 looks too pixelated. Why?
-  float alpha = smoothstep(-0.8, 0.8, -screenDist);
+  float alpha = smoothstep(-0.707, 0.707, -screenDist);
   gl_FragColor = fillStyle * alpha;
 }
 `;
 
-function initTextLoader(context, constructVao) {
-  const { initQuad, initAttribute } = context;
+function initText(context) {
+  const { initPaintProgram, initQuad, initAttributes } = context;
+
+  const program = initPaintProgram(vert, frag);
+  const { uniformSetters, constructVao, initTilesetPainter } = program;
 
   const quadPos = initQuad({ x0: 0.0, y0: 0.0, x1: 1.0, y1: 1.0 });
 
   const attrInfo = {
-    labelPos: { numComponents: 2 },
-    charPos: { numComponents: 3 },
+    labelPos: { numComponents: 3 },
+    charPos: { numComponents: 4 },
     sdfRect: { numComponents: 4 },
     tileCoords: { numComponents: 3 },
     color: { numComponents: 4 },
     opacity: { numComponents: 1 },
   };
 
-  return function(buffers) {
-    const attributes = Object.entries(attrInfo).reduce((d, [key, info]) => {
-      const data = buffers[key];
-      if (data) d[key] = initAttribute(Object.assign({ data }, info));
-      return d;
-    }, { quadPos });
-
+  function load(buffers) {
+    const attributes = initAttributes(attrInfo, buffers, { quadPos });
     const vao = constructVao({ attributes });
-
-    return { vao, instanceCount: buffers.labelPos.length / 2 };
-  };
-}
-
-function initText(context, framebufferSize, preamble) {
-  const program = context.initProgram(preamble + vert, frag);
-  const { use, uniformSetters, constructVao } = program;
-  const grid = initGrid(framebufferSize, use, uniformSetters);
-
-  const load = initTextLoader(context, constructVao);
-
-  function setAtlas(atlas) {
-    uniformSetters.sdf(atlas.sampler);
-    uniformSetters.sdfDim([atlas.width, atlas.height]);
+    return { vao, instanceCount: buffers.labelPos.length / 3 };
   }
 
   function initPainter(style) {
     const { id, paint } = style;
 
-    const zoomFuncs = initSetters([
+    const zoomFuncs = [
       [paint["text-color"],   "color"],
       [paint["text-opacity"], "opacity"],
 
       // text-halo-color
       // TODO: sprites
-    ], uniformSetters);
+    ];
 
-    const paintTile = initVectorTilePainter(
-      context, framebufferSize, id, setAtlas
-    );
-    return initTilesetPainter(grid, zoomFuncs, paintTile);
+    return initTilesetPainter(id, zoomFuncs, uniformSetters.sdf);
   }
 
   return { load, initPainter };
 }
 
-function initGLpaint(context, framebuffer) {
-  const programs = {
-    "background": initBackground(context),
-    "circle": initCircle(context, framebuffer.size, preamble),
-    "line": initLine(context, framebuffer.size, preamble),
-    "fill": initFill(context, framebuffer.size, preamble),
-    "symbol": initText(context, framebuffer.size, preamble),
+function initPrograms(context, framebuffer, projScale) {
+  const { initAttribute, initProgram } = context;
+
+  const scaleCode = (projScale) ? mercatorScale : simpleScale;
+
+  context.initAttributes = function(attrInfo, buffers, preInitialized = {}) {
+    return Object.entries(attrInfo).reduce((d, [key, info]) => {
+      const data = buffers[key];
+      if (data) d[key] = initAttribute(Object.assign({ data }, info));
+      return d;
+    }, preInitialized);
   };
+
+  context.initPaintProgram = function(vert, frag) {
+    const program = initProgram(preamble + scaleCode + vert, frag);
+    const initTilesetPainter = initGrid(context, framebuffer.size, program);
+    const { constructVao, uniformSetters } = program;
+    return { constructVao, uniformSetters, initTilesetPainter };
+  };
+
+  return {
+    "background": initBackground(context),
+    "circle": initCircle(context),
+    "line": initLine(context),
+    "fill": initFill(context),
+    "symbol": initText(context),
+  };
+}
+
+function initGLpaint({ context, framebuffer, projScale }) {
+  const programs = initPrograms(context, framebuffer, projScale);
 
   function prep() {
     context.bindFramebufferAndSetViewport(framebuffer);
@@ -1322,12 +1313,9 @@ function initGLpaint(context, framebuffer) {
 
   function loadAtlas(atlas) {
     const format = context.gl.ALPHA;
-    const mips = false;
-
     const { width, height, data } = atlas;
-    const sampler = context.initTexture({ format, width, height, data, mips });
-
-    return { width, height, sampler };
+    const mips = false;
+    return context.initTexture({ format, width, height, data, mips });
   }
 
   function initPainter(style) {
@@ -1356,6 +1344,7 @@ function setParams$1$1(userParams) {
     mapboxToken,
     clampY = true,
     units = "degrees",
+    projScale = false,
   } = userParams;
 
   const { buffer, size } = framebuffer;
@@ -1394,7 +1383,7 @@ function setParams$1$1(userParams) {
     gl, framebuffer,
     projection, coords,
     style, mapboxToken,
-    context: initGLpaint(context, framebuffer),
+    context: initGLpaint({ context, framebuffer, projScale }),
   };
 }
 
@@ -5500,13 +5489,14 @@ function layoutLine(glyphs, origin, spacing, scalar) {
 
   return glyphs.flatMap(g => {
     const { left, top, advance } = g.metrics;
+    const { w, h } = g.rect;
 
     const dx = xCursor + left - RECT_BUFFER;
     const dy = y0 - top - RECT_BUFFER;
 
     xCursor += advance + spacing;
 
-    return [dx, dy, scalar];
+    return [dx, dy, w, h].map(c => c * scalar);
   });
 }
 
@@ -5767,13 +5757,16 @@ function initShaper(layout) {
       .flatMap((l, i) => layoutLine(l, lineOrigins[i], spacing, scalar));
 
     // 6. Fill in label origins for each glyph. TODO: assumes Point geometry
-    const origin = feature.geometry.coordinates.slice();
+    const origin = [...feature.geometry.coordinates, scalar];
     const labelPos = lines.flat()
       .flatMap(() => origin);
 
-    // 7. Collect all the glyph rects
-    const sdfRect = lines.flat()
-      .flatMap(g => Object.values(g.rect));
+    // 7. Collect all the glyph rects, normalizing by atlas dimensions
+    const { width, height } = atlas.image;
+    const sdfRect = lines.flat().flatMap(g => {
+      const { x, y, w, h } = g.rect;
+      return [x / width, y / height, w / width, h / height];
+    });
 
     // 8. Compute bounding box for collision checks
     const textPadding = layout["text-padding"](zoom, feature);
@@ -8281,7 +8274,8 @@ function initSources(style, context, coords) {
   };
 }
 
-function initRenderer(context, style) {
+function initRenderer(context, coords, style) {
+  const { PI, cosh } = Math;
   const { layers } = style;
 
   const painters = layers.map(layer => {
@@ -8291,13 +8285,19 @@ function initRenderer(context, style) {
     return painter;
   });
 
-  return function(tilesets, zoom, pixRatio = 1) {
+  return function(tilesets, pixRatio = 1, dzScale = 1) {
     context.prep();
+    const zoom = coords.getZoom();
+
+    const localCamY = coords.getCamPos()[1] * coords.getViewport()[1];
+    const globalCamY = coords.localToGlobal([0.0, localCamY])[1];
+    const cameraScale = cosh(2 * PI * (0.5 - globalCamY)) * dzScale;
+
     painters.forEach(painter => {
       if (zoom < painter.minzoom || painter.maxzoom < zoom) return;
       if (!painter.visible()) return;
       const tileset = tilesets[painter.source];
-      painter({ tileset, zoom, pixRatio });
+      painter({ tileset, zoom, pixRatio, cameraScale });
     });
   };
 }
@@ -8617,7 +8617,8 @@ function init$3(userParams) {
 }
 
 function setup$2(styleDoc, params, api) {
-  const sources = initSources(styleDoc, params.context, api);
+  const { context, coords, projection } = params;
+  const sources = initSources(styleDoc, context, api);
 
   // Set up interactive toggling of layer visibility
   styleDoc.layers.forEach(l => {
@@ -8633,15 +8634,15 @@ function setup$2(styleDoc, params, api) {
   api.hideLayer = (id) => setLayerVisibility(id, false);
   api.showLayer = (id) => setLayerVisibility(id, true);
 
-  const render = initRenderer(params.context, styleDoc);
+  const render = initRenderer(context, coords, styleDoc);
 
-  api.draw = function(pixRatio = 1) {
+  api.draw = function({ pixRatio = 1, dzScale = 1 } = {}) {
     const loadStatus = sources.loadTilesets();
-    render(sources.tilesets, api.getZoom(), pixRatio);
+    render(sources.tilesets, pixRatio, dzScale);
     return loadStatus;
   };
 
-  api.select = initSelector(sources, params.projection);
+  api.select = initSelector(sources, projection);
 
   return api;
 }
@@ -8650,7 +8651,7 @@ function initMap(params) {
   const { context, width, height, style, mapboxToken } = params;
   const framebuffer = context.initFramebuffer({ width, height });
 
-  return init$3({ context, framebuffer, style, mapboxToken })
+  return init$3({ context, framebuffer, style, mapboxToken, projScale: true })
     .promise.then(api => setup$1(api, context, framebuffer.sampler));
 }
 
@@ -8682,7 +8683,8 @@ function setup$1(api, context, sampler) {
     const zoom = Math.log2(k) - 9;
 
     api.setCenterZoom(camPos, zoom);
-    loadStatus = api.draw();
+    const dzScale = 2 ** (zoom - api.getZoom());
+    loadStatus = api.draw({ dzScale });
 
     texture.scale.set(api.getScale());
     texture.camPos.set(api.getCamPos());

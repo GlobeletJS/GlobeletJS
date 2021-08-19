@@ -6,6 +6,9 @@ export function setParams(userParams) {
   // Get the containing DIV element, and set its CSS class
   const container = document.getElementById(userParams.container);
   container.classList.add("globelet");
+  if (container.clientWidth <= 64 || container.clientHeight <= 64) {
+    throw Error("GlobeletJS: container must be at least 64x64 pixels!");
+  }
 
   // Add Elements for globe interface, svg sprite, status bar, canvas
   const globeDiv = addChild("div", "main", container);

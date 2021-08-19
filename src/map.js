@@ -5,7 +5,7 @@ export function initMap(params) {
   const framebuffer = context.initFramebuffer({ width, height });
 
   return tileSetter
-    .init({ context, framebuffer, style, mapboxToken })
+    .init({ context, framebuffer, style, mapboxToken, projScale: true })
     .promise.then(api => setup(api, context, framebuffer.sampler));
 }
 
@@ -37,7 +37,8 @@ function setup(api, context, sampler) {
     const zoom = Math.log2(k) - 9;
 
     api.setCenterZoom(camPos, zoom);
-    loadStatus = api.draw();
+    const dzScale = 2 ** (zoom - api.getZoom());
+    loadStatus = api.draw({ dzScale });
 
     texture.scale.set(api.getScale());
     texture.camPos.set(api.getCamPos());
