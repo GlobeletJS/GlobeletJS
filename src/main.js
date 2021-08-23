@@ -50,6 +50,7 @@ function setup(map, params) {
 
     destroy: () => (satView.destroy(), globeDiv.remove()),
     breakLoop: 0,
+    version: params.version,
   };
 
   function animate(time) {

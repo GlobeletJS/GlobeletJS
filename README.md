@@ -68,8 +68,8 @@ const globePromise = globeletjs.initGlobe(params);
 ```
 
 The `params` object supplied to initGlobe can have the following properties:
-- `container` (REQUIRED): The [ID][] of an [HTML DIV element][] where the 
-  globe will be displayed
+- `container` (REQUIRED): An [HTML DIV element][] (or its string [ID][]) where
+  the globe will be displayed
 - `style` (REQUIRED): A link to a [MapLibre style document][Maplibre] 
   describing the map to be rendered. Please see below for some notes about
   [supported map styles](#supported-map-styles).

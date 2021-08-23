@@ -4,15 +4,17 @@ import sprite from "../dist/globelet.svg";
 
 export function setParams(userParams) {
   // Get the containing DIV element, and set its CSS class
-  const container = document.getElementById(userParams.container);
-  container.classList.add("globelet");
+  const container = (typeof userParams.container === "string")
+    ? document.getElementById(userParams.container)
+    : userParams.container;
+  if (!(container instanceof Element)) fail("missing container element");
   if (container.clientWidth <= 64 || container.clientHeight <= 64) {
-    throw Error("GlobeletJS: container must be at least 64x64 pixels!");
+    fail("container must be at least 64x64 pixels");
   }
+  container.classList.add("globelet");
 
   // Add Elements for globe interface, svg sprite, status bar, canvas
   const globeDiv = addChild("div", "main", container);
-  globeDiv.id = "globe"; // TEMPORARY: For backwards compatibility
   globeDiv.insertAdjacentHTML("afterbegin", sprite);
   const toolTip = addChild( "div", "status", globeDiv);
   const canvas = addChild("canvas", "map", globeDiv);
@@ -47,4 +49,8 @@ export function setParams(userParams) {
     child.className = className;
     return parentElement.appendChild(child);
   }
+}
+
+function fail(message) {
+  throw Error("GlobeletJS: " + message);
 }
