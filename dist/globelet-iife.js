@@ -225,7 +225,7 @@ var globeletjs = (function (exports) {
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      fail$3("Unable to link the program", gl.getProgramInfoLog(program));
+      fail$4("Unable to link the program", gl.getProgramInfoLog(program));
     }
 
     const { constantSetters, constructVao } = initAttributes(gl, program);
@@ -246,13 +246,13 @@ var globeletjs = (function (exports) {
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
       const log = gl.getShaderInfoLog(shader);
       gl.deleteShader(shader);
-      fail$3("An error occured compiling the shader", log);
+      fail$4("An error occured compiling the shader", log);
     }
 
     return shader;
   }
 
-  function fail$3(msg, log) {
+  function fail$4(msg, log) {
     throw Error("yawgl.initProgram: " + msg + ":\n" + log);
   }
 
@@ -464,7 +464,7 @@ var globeletjs = (function (exports) {
     }
   }
 
-  var version = "0.1.1";
+  var version = "0.1.2";
 
   var sprite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sprite">
   <!--Default image for favicon-->
@@ -522,15 +522,17 @@ var globeletjs = (function (exports) {
 
   function setParams$3(userParams) {
     // Get the containing DIV element, and set its CSS class
-    const container = document.getElementById(userParams.container);
-    container.classList.add("globelet");
+    const container = (typeof userParams.container === "string")
+      ? document.getElementById(userParams.container)
+      : userParams.container;
+    if (!(container instanceof Element)) fail$3("missing container element");
     if (container.clientWidth <= 64 || container.clientHeight <= 64) {
-      throw Error("GlobeletJS: container must be at least 64x64 pixels!");
+      fail$3("container must be at least 64x64 pixels");
     }
+    container.classList.add("globelet");
 
     // Add Elements for globe interface, svg sprite, status bar, canvas
     const globeDiv = addChild("div", "main", container);
-    globeDiv.id = "globe"; // TEMPORARY: For backwards compatibility
     globeDiv.insertAdjacentHTML("afterbegin", sprite);
     const toolTip = addChild( "div", "status", globeDiv);
     const canvas = addChild("canvas", "map", globeDiv);
@@ -565,6 +567,10 @@ var globeletjs = (function (exports) {
       child.className = className;
       return parentElement.appendChild(child);
     }
+  }
+
+  function fail$3(message) {
+    throw Error("GlobeletJS: " + message);
   }
 
   const { cos, tan, atan, exp, log, PI, min, max } = Math;
@@ -10583,6 +10589,7 @@ precision highp sampler2D;
 
       destroy: () => (satView.destroy(), globeDiv.remove()),
       breakLoop: 0,
+      version: params.version,
     };
 
     function animate(time) {
