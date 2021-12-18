@@ -19,9 +19,8 @@ export function setParams(userParams) {
   const toolTip = addChild( "div", "status", globeDiv);
   const canvas = addChild("canvas", "map", globeDiv);
 
-  // Get a WebGL context and add yawgl functionality
-  const gl = yawgl.getExtendedContext(canvas);
-  const context = yawgl.initContext(gl);
+  // Get a WebGL context with added yawgl functionality
+  const context = yawgl.initContext(canvas);
 
   // Get user-supplied parameters
   const {
