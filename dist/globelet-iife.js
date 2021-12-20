@@ -402,7 +402,7 @@ var globeletjs = (function (exports) {
     }
   }
 
-  var version = "0.1.2";
+  var version = "0.1.3";
 
   var sprite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sprite">
   <!--Default image for favicon-->
