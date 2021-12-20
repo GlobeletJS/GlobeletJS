@@ -1,0 +1,18 @@
+html {
+  overflow: hidden;
+  height: 100%;
+}
+body {
+  height: 100%;
+  border: 0;
+  margin: 0;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.globelet .spot {
+  width: 18px;
+  height: 18px;
+}
+#globe {
+  height: 100%;
+}

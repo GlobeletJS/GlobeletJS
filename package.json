@@ -1,6 +1,6 @@
 {
   "name": "globeletjs",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Lightweight vector maps on a globe",
   "main": "dist/globelet-iife.js",
   "module": "dist/globelet.js",
@@ -36,15 +36,15 @@
   "homepage": "https://globeletjs.org",
   "devDependencies": {
     "@rollup/plugin-json": "^4.1.0",
-    "@rollup/plugin-node-resolve": "^13.0.0",
-    "eslint": "^7.30.0",
+    "@rollup/plugin-node-resolve": "^13.0.6",
+    "eslint": "^8.5.0",
     "eslint-config-globeletjs": "^0.0.6",
-    "rollup": "^2.52.7"
+    "rollup": "^2.60.2"
   },
   "dependencies": {
-    "satellite-view": "^2.1.0",
-    "spinning-ball": "^0.3.0",
-    "tile-setter": "^0.1.1",
-    "yawgl": "^0.3.3"
+    "satellite-view": "^2.1.1",
+    "spinning-ball": "^0.3.1",
+    "tile-setter": "^0.1.8",
+    "yawgl": "^0.4.0"
   }
 }

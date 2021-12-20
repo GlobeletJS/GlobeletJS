@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title>Globelet - Beta</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="icon" type="image/svg+xml" href="../../dist/globelet.svg">
+
+    <link rel="stylesheet" type="text/css" href="../../dist/globelet.css">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+  </head>
+
+  <body>
+    <div id="globe"></div>
+  </body>
+
+  <script type="module">
+    import * as globeletjs from "../../dist/globelet.js";
+
+    globeletjs.initGlobe({
+      container: 'globe',
+      style: "./streets-v8-noInteractive.json",
+      mapboxToken: "pk.eyJ1IjoiamhlbWJkIiwiYSI6ImNqcHpueHpyZjBlMjAzeG9kNG9oNzI2NTYifQ.K7fqhk2Z2YZ8NIV94M-5nA",
+      center: [-100.0, 38.5],
+      altitude: 6280,
+    }).then(globe => globe.startAnimation())
+      .catch(console.log);
+  </script>
+</html>
