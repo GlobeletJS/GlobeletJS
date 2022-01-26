@@ -1,41 +1,30 @@
 import { setParams } from "./params.js";
 import { initMap } from "./map.js";
 import * as spinningBall from "spinning-ball";
-import * as satelliteView from "satellite-view";
-import { printToolTip } from "./tooltip.js";
+import { initToolTip } from "./tooltip.js";
 import { initMarkers } from "./markers.js";
+import { initInfoBox } from "./infobox.js";
 
 export function initGlobe(userParams) {
   const params = setParams(userParams);
-
-  return initMap(params)
-    .then(map => setup(map, params));
-}
-
-function setup(map, params) {
-  const { globeDiv, toolTip, center, altitude, context } = params;
-  let requestID;
+  const { globeDiv, center, altitude } = params;
 
   const ball = spinningBall.init({
     display: globeDiv,
     position: [center[0], center[1], altitude],
   });
-  const satView = satelliteView.init({
-    context: context,
-    globeRadius: ball.radius(),
-    map: map.texture,
-    flipY: false,
-    units: "degrees",
-  });
+
+  return initMap(ball, params)
+    .then(map => setup(map, ball, globeDiv));
+}
+
+function setup(map, ball, globeDiv) {
+  let requestID;
   const markers = initMarkers(ball, globeDiv);
+  const toolTip = initToolTip(ball, globeDiv);
+  const infoBox = initInfoBox(globeDiv);
 
-  return {
-    mapLoaded: map.loaded,
-    select: (layer, dxy) => map.select(layer, ball.cursorPos(), dxy),
-    showLayer: map.showLayer,
-    hideLayer: map.hideLayer,
-    getZoom: map.getZoom,
-
+  const api = Object.assign({}, map, infoBox, {
     startAnimation: () => { requestID = requestAnimationFrame(animate); },
     stopAnimation: () => cancelAnimationFrame(requestID),
     update,  // For requestAnimationFrame loops managed by the parent program
@@ -48,10 +37,11 @@ function setup(map, params) {
     addMarker: markers.add,
     removeMarker: markers.remove,
 
-    destroy: () => (satView.destroy(), globeDiv.remove()),
-    breakLoop: 0,
-    version: params.version,
-  };
+    destroy: () => (map.destroy(), infoBox.destroy(), globeDiv.remove()),
+  });
+
+  delete api.draw; // From map.js. We expose the "update" wrapper instead
+  return api;
 
   function animate(time) {
     update(time);
@@ -61,12 +51,8 @@ function setup(map, params) {
   function update(time) {
     const moving = ball.update(time * 0.001); // Convert time from ms to seconds
 
-    if (moving || map.loaded() < 1.0) {
-      map.draw(ball.cameraPos(), ball.radius(), ball.view);
-      satView.draw(ball.cameraPos(), ball.view.maxRay);
-    }
-
+    if (moving || map.mapLoaded() < 1.0) map.draw(ball.cameraPos());
     if (moving) markers.update();
-    if (ball.cursorChanged()) printToolTip(toolTip, ball);
+    if (ball.cursorChanged()) toolTip.update();
   }
 }

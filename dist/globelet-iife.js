@@ -402,8 +402,6 @@ var globeletjs = (function (exports) {
     }
   }
 
-  var version = "0.1.3";
-
   var sprite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sprite">
   <!--Default image for favicon-->
   <text y="1em" font-size="80">&#127823;</text>
@@ -458,25 +456,32 @@ var globeletjs = (function (exports) {
 </svg>
 `;
 
-  function setParams$4(userParams) {
+  function newElement(tagName, className) {
+    const el = document.createElement(tagName);
+    if (className !== undefined) el.className = className;
+    return el;
+  }
+
+  function newSVG(tagName, attributes) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", tagName);
+    Object.entries(attributes).forEach(([k, v]) => svg.setAttribute(k, v));
+    return svg;
+  }
+
+  function setParams$5(userParams) {
     // Get the containing DIV element, and set its CSS class
     const container = (typeof userParams.container === "string")
       ? document.getElementById(userParams.container)
       : userParams.container;
     if (!(container instanceof Element)) fail$3("missing container element");
+    container.classList.add("globelet");
     if (container.clientWidth <= 64 || container.clientHeight <= 64) {
       fail$3("container must be at least 64x64 pixels");
     }
-    container.classList.add("globelet");
 
-    // Add Elements for globe interface, svg sprite, status bar, canvas
-    const globeDiv = addChild("div", "main", container);
+    // Add Elements for globe interface, svg sprite
+    const globeDiv = container.appendChild(newElement("div", "main"));
     globeDiv.insertAdjacentHTML("afterbegin", sprite);
-    const toolTip = addChild( "div", "status", globeDiv);
-    const canvas = addChild("canvas", "map", globeDiv);
-
-    // Get a WebGL context with added yawgl functionality
-    const context = initContext(canvas);
 
     // Get user-supplied parameters
     const {
@@ -492,22 +497,338 @@ var globeletjs = (function (exports) {
     const height = nextPowerOf2(rawHeight);
     const width = Math.max(nextPowerOf2(rawWidth), height);
 
-    return { version,
-      style, mapboxToken,
-      width, height,
-      globeDiv, context, toolTip,
-      center, altitude,
+    return {
+      style, mapboxToken, width, height,
+      center, altitude, globeDiv,
     };
-
-    function addChild(tagName, className, parentElement) {
-      const child = document.createElement(tagName);
-      child.className = className;
-      return parentElement.appendChild(child);
-    }
   }
 
   function fail$3(message) {
     throw Error("GlobeletJS: " + message);
+  }
+
+  function setParams$4(userParams) {
+    const {
+      context,
+      pixelRatio,
+      globeRadius = 6371,
+      map,
+      flipY = false,
+      units = "radians",
+    } = userParams;
+
+    if (!context || !(context.gl instanceof WebGL2RenderingContext)) {
+      throw "satellite-view: no valid WebGL2RenderingContext!";
+    }
+
+    const getPixelRatio = (pixelRatio)
+      ? () => userParams.pixelRatio
+      : () => window.devicePixelRatio;
+    // NOTE: getPixelRatio() returns the result of an object getter,
+    //       NOT the property value at the time of getPixelRatio definition
+    //  Thus, getPixelRatio will mirror any changes in the parent object
+
+    const maps = Array.isArray(map) ? map : [map];
+
+    const unitsPerRad = (units === "degrees")
+      ? 180.0 / Math.PI
+      : 1.0;
+
+    return { context, getPixelRatio, globeRadius, maps, flipY, unitsPerRad };
+  }
+
+  var vertexSrc = `#version 300 es
+
+in vec4 aVertexPosition;
+
+uniform vec2 uMaxRay;
+
+out highp vec2 vRayParm;
+
+void main(void) {
+  vRayParm = uMaxRay * aVertexPosition.xy;
+  gl_Position = aVertexPosition;
+}
+`;
+
+  var invertSrc = `uniform float uLat0;
+uniform float uCosLat0;
+uniform float uSinLat0;
+uniform float uTanLat0;
+
+float latChange(float x, float y, float sinC, float cosC) {
+  float xtan = x * uTanLat0;
+  float curveTerm = 0.5 * y * (xtan * xtan - y * y / 3.0);
+
+  return (max(sinC, abs(sinC * uTanLat0) ) < 0.1)
+    ? sinC * (y - sinC * (0.5 * xtan * x + curveTerm * sinC))
+    : asin(uSinLat0 * cosC + y * uCosLat0 * sinC) - uLat0;
+}
+
+vec2 xyToLonLat(vec2 xy, float sinC, float cosC) {
+  vec2 pHat = normalize(xy);
+  float dLon = atan(pHat.x * sinC,
+      uCosLat0 * cosC - pHat.y * uSinLat0 * sinC);
+  float dLat = latChange(pHat.x, pHat.y, sinC, cosC);
+  return vec2(dLon, dLat);
+}
+`;
+
+  var projectSrc = `const float ONEOVERTWOPI = 0.15915493667125702;
+
+uniform float uExpY0;
+uniform float uLatErr; // Difference of clipping to map limit
+
+float smallTan(float x) {
+  return (abs(x) < 0.1)
+    ? x * (1.0 + x * x / 3.0)
+    : tan(x);
+}
+
+float log1plusX(float x) {
+  return (abs(x) < 0.15)
+    ? x * (1.0 - x * (0.5 - x / 3.0 + x * x / 4.0))
+    : log( 1.0 + max(x, -0.999) );
+}
+
+vec2 projMercator(vec2 dLonLat) {
+  float tandlat = smallTan( 0.5 * (dLonLat[1] + uLatErr) );
+  float p = tandlat * uExpY0;
+  float q = tandlat / uExpY0;
+  return vec2(dLonLat[0], log1plusX(q) - log1plusX(-p)) * ONEOVERTWOPI;
+}
+`;
+
+  function glslInterp(strings, ...expressions) {
+    return strings.reduce( (acc, val, i) => acc + expressions[i-1]() + val );
+  }
+  var texLookup = (args) => glslInterp`const int nLod = ${args.nLod};
+
+uniform sampler2D uTextureSampler[nLod];
+uniform vec2 uCamMapPos[nLod];
+uniform vec2 uMapScales[nLod];
+
+float dateline(float x1) {
+  // Choose the correct texture coordinate in fragments crossing the
+  // antimeridian of a cylindrical coordinate system
+  // See http://vcg.isti.cnr.it/~tarini/no-seams/
+
+  // Alternate coordinate: forced across the antimeridian
+  float x2 = fract(x1 + 0.5) - 0.5;
+  // Choose the coordinate with the smaller screen-space derivative
+  return (fwidth(x1) < fwidth(x2) + 0.001) ? x1 : x2;
+}
+
+bool inside(vec2 pos) {
+  // Check if the supplied texture coordinate falls inside [0,1] X [0,1]
+  // We adjust the limits slightly to ensure we are 1 pixel away from the edges
+  return (
+      0.001 < pos.x && pos.x < 0.999 &&
+      0.001 < pos.y && pos.y < 0.999 );
+}
+
+vec4 sampleLOD(sampler2D samplers[nLod], vec2 coords[nLod]) {
+  return ${args.buildSelector}texture(samplers[0], coords[0]);
+}
+
+vec4 texLookup(vec2 dMerc) {
+  vec2 texCoords[nLod];
+
+  for (int i = 0; i < nLod; i++) {
+    texCoords[i] = uCamMapPos[i] + uMapScales[i] * dMerc;
+    texCoords[i].x = dateline(texCoords[i].x);
+  }
+
+  return sampleLOD(uTextureSampler, texCoords);
+}
+`;
+
+  var dither2x2 = `float threshold(float val, float limit) {
+  float decimal = fract(255.0 * val);
+  float dithered = (decimal < limit)
+    ? 0.0
+    : 1.0;
+  float adjustment = (dithered - decimal) / 255.0;
+  return val + adjustment;
+}
+
+vec3 dither2x2(vec2 position, vec3 color) {
+  // Based on https://github.com/hughsk/glsl-dither/blob/master/2x2.glsl
+  int x = int( mod(position.x, 2.0) );
+  int y = int( mod(position.y, 2.0) );
+  int index = x + y * 2;
+
+  float limit = 0.0;
+  if (index == 0) limit = 0.25;
+  if (index == 1) limit = 0.75;
+  if (index == 2) limit = 1.00;
+  if (index == 3) limit = 0.50;
+
+  // Use limit to toggle color between adjacent 8-bit values
+  return vec3(
+      threshold(color.r, limit),
+      threshold(color.g, limit),
+      threshold(color.b, limit)
+      );
+}
+`;
+
+  var fragMain = `float diffSqrt(float x) {
+  // Returns 1 - sqrt(1-x), with special handling for small x
+  float halfx = 0.5 * x;
+  return (x < 0.1)
+    ? halfx * (1.0 + 0.5 * halfx * (1.0 + halfx))
+    : 1.0 - sqrt(1.0 - x);
+}
+
+float horizonTaper(float gamma) {
+  // sqrt(gamma) = tan(ray_angle) / tan(horizon)
+  float horizonRatio = sqrt(gamma);
+  float delta = 2.0 * fwidth(horizonRatio);
+  return 1.0 - smoothstep(1.0 - delta, 1.0, horizonRatio);
+}
+
+in vec2 vRayParm;
+uniform float uHnorm;
+out vec4 pixColor;
+
+void main(void) {
+  // 0. Pre-compute some values
+  float p = length(vRayParm); // Tangent of ray angle
+  float p2 = p * p;
+  float gamma = p2 * uHnorm * (2.0 + uHnorm);
+  float sinC = (uHnorm + diffSqrt(gamma)) * p / (1.0 + p2);
+  float cosC = sqrt(1.0 - sinC * sinC);
+
+  // 1. Invert for longitude and latitude perturbations relative to camera
+  vec2 dLonLat = xyToLonLat(vRayParm, sinC, cosC);
+
+  // 2. Project to a change in the Mercator coordinates
+  vec2 dMerc = projMercator(dLonLat);
+
+  // 3. Lookup color from the appropriate texture
+  vec4 texelColor = texLookup(dMerc);
+
+  // Add cosine shading, dithering, and horizon tapering
+  vec3 dithered = dither2x2(gl_FragCoord.xy, cosC * texelColor.rgb);
+  pixColor = vec4(dithered.rgb, texelColor.a) * horizonTaper(gamma);
+}
+`;
+
+  const header = `#version 300 es
+precision highp float;
+precision highp sampler2D;
+
+`;
+
+  function buildShader(nLod) {
+    // Input nLod is the number of 'levels of detail' supplied
+    // in the set of multi-resolution maps
+    nLod = Math.max(1, Math.floor(nLod));
+
+    // Execute the 'tagged template literal' added to texLookup.js.glsl by
+    // ../../build/glsl-plugin.js. This will substitute nLod-dependent code
+    const args = { // Properties MUST match ./texLookup.js.glsl
+      nLod: () => nLod,
+      buildSelector: () => buildSelector(nLod),
+    };
+    const texLookupSrc = texLookup(args);
+
+    // Combine the GLSL-snippets into one shader source
+    const fragmentSrc = header + invertSrc + projectSrc +
+      texLookupSrc + dither2x2 + fragMain;
+
+    return {
+      vert: vertexSrc,
+      frag: fragmentSrc,
+    };
+  }
+
+  function buildSelector(n) {
+    // In the texLookup code, add lines to check each of the supplied textures,
+    // and sample the highest LOD that contains the current coordinate
+    let selector = ``; // eslint-disable-line quotes
+    while (--n) selector += `inside(coords[${n}])
+    ? texture(samplers[${n}], coords[${n}])
+    : `;
+    return selector;
+  }
+
+  function init$5(userParams) {
+    const { PI, cos, sin, tan, atan, exp, min, max } = Math;
+    const maxMercLat = 2.0 * atan(exp(PI)) - PI / 2.0;
+
+    const params = setParams$4(userParams);
+    const { context, maps, globeRadius, unitsPerRad } = params;
+
+    // Initialize shader program
+    const shaders = buildShader(maps.length);
+    const program = context.initProgram(shaders.vert, shaders.frag);
+    const { uniformSetters: setters, constructVao } = program;
+
+    // Initialize VAO
+    const aVertexPosition = context.initQuad();
+    const vao = constructVao({ attributes: { aVertexPosition } });
+
+    return {
+      canvas: context.gl.canvas,
+      draw,
+      setPixelRatio: (ratio) => { params.getPixelRatio = () => ratio; },
+      destroy: () => context.gl.canvas.remove(),
+    };
+
+    function draw(camPos, maxRayTan) {
+      program.use();
+
+      // Set uniforms related to camera position
+      const lat = camPos[1] / unitsPerRad;
+      setters.uLat0(lat);
+      setters.uCosLat0(cos(lat));
+      setters.uSinLat0(sin(lat));
+      setters.uTanLat0(tan(lat));
+
+      const clipLat = min(max(-maxMercLat, lat), maxMercLat);
+      setters.uLatErr(lat - clipLat);
+      setters.uExpY0(tan(PI / 4 + clipLat / 2));
+
+      setters.uHnorm(camPos[2] / globeRadius);
+      setters.uMaxRay(maxRayTan);
+
+      setters.uCamMapPos(maps.flatMap(m => [m.camPos[0], 1.0 - m.camPos[1]]));
+      setters.uMapScales(maps.flatMap(m => Array.from(m.scale)));
+      setters.uTextureSampler(maps.map(m => m.sampler));
+
+      // Draw the globe
+      const resized = context.resizeCanvasToDisplaySize(params.getPixelRatio());
+      context.bindFramebufferAndSetViewport();
+      context.gl.pixelStorei(context.gl.UNPACK_FLIP_Y_WEBGL, params.flipY);
+      context.clear();
+      context.draw({ vao });
+
+      return resized;
+    }
+  }
+
+  function initReprojection(ball, context, sampler) {
+    const camPos = new Float64Array([0.5, 0.5]);
+    const scale = new Float64Array(2);
+
+    const satView = init$5({
+      context,
+      map: { sampler, camPos, scale },
+      globeRadius: ball.radius(),
+      flipY: false,
+      units: "degrees",
+    });
+
+    function reproject(map, satellitePos) {
+      scale.set(map.getScale());
+      camPos.set(map.getCamPos());
+      context.updateMips(sampler);
+      satView.draw(satellitePos, ball.view.maxRay);
+    }
+
+    return { reproject, destroy: satView.destroy };
   }
 
   const { cos, tan, atan, exp, log, PI, min, max } = Math;
@@ -1510,7 +1831,7 @@ void main() {
     return { prep, loadBuffers, loadAtlas, loadSprite, initPainter };
   }
 
-  function setParams$1$1(userParams) {
+  function setParams$1(userParams) {
     const gl = userParams.context.gl;
     if (!(gl instanceof WebGL2RenderingContext)) fail$1("no valid WebGL context");
 
@@ -2646,7 +2967,7 @@ void main() {
     };
   }
 
-  function init$1$1() {
+  function init$1() {
     const tasks = [];
     let taskId = 0;
     let queueIsRunning = false;
@@ -2706,7 +3027,7 @@ void main() {
   function setParams$3(userParams) {
     const {
       context, threads = 2,
-      queue = init$1$1(),
+      queue = init$1(),
       source, glyphs, layers, spriteData,
     } = userParams;
 
@@ -9318,7 +9639,7 @@ function sendTile({ id, tile, transferables }) {
   }
 
   function init$4(userParams) {
-    const params = setParams$1$1(userParams);
+    const params = setParams$1(userParams);
 
     // Set up dummy API
     const api = {
@@ -9369,53 +9690,49 @@ function sendTile({ id, tile, transferables }) {
     return api;
   }
 
-  function initMap(params) {
-    const { context, width, height, style, mapboxToken } = params;
+  function initMap(ball, params) {
+    const { width, height, style, mapboxToken, globeDiv } = params;
+
+    const canvas = globeDiv.appendChild(newElement("canvas", "map"));
+    const context = initContext(canvas);
+
     const framebuffer = context.initFramebuffer({ width, height });
+    const renderer = initReprojection(ball, context, framebuffer.sampler);
 
     return init$4({ context, framebuffer, style, mapboxToken, projScale: true })
-      .promise.then(api => setup$1(api, context, framebuffer.sampler));
+      .promise.then(map => setup$1(map, ball, renderer, globeDiv));
   }
 
-  function setup$1(api, context, sampler) {
+  function setup$1(map, ball, renderer, globeDiv) {
     let loadStatus = 0;
 
-    const texture = {
-      sampler,
-      camPos: new Float64Array([0.5, 0.5]),
-      scale: new Float64Array(2),
-    };
-
     return {
-      texture,
-      loaded: () => loadStatus,
-      draw,
+      mapLoaded: () => loadStatus,
       select,
-      showLayer: (l) => (loadStatus = 0, api.showLayer(l)),
-      hideLayer: (l) => (loadStatus = 0, api.hideLayer(l)),
-      getZoom: api.getZoom,
+      showLayer: (l) => (loadStatus = 0, map.showLayer(l)),
+      hideLayer: (l) => (loadStatus = 0, map.hideLayer(l)),
+      getZoom: map.getZoom,
+      destroy: renderer.destroy,
+      draw,
     };
 
-    function draw(camPos, radius, view) {
-      const dMap = camPos[2] / radius *        // Normalize to radius = 1
-        view.topEdge() * 2 / view.height() * // ray tangent per pixel
-        api.projection.scale(camPos);
+    function draw(satellitePos) {
+      const hNorm = satellitePos[2] / ball.radius();
+      const rayTanPerPixel = ball.view.topEdge() * 2 / ball.view.height();
+      const dMap = hNorm * rayTanPerPixel * map.projection.scale(satellitePos);
 
       const k = 1.0 / dMap;
       const zoom = Math.log2(k) - 9;
 
-      api.setCenterZoom(camPos, zoom);
-      const dzScale = 2 ** (zoom - api.getZoom());
-      loadStatus = api.draw({ dzScale });
+      map.setCenterZoom(satellitePos, zoom);
+      const dzScale = 2 ** (zoom - map.getZoom());
+      loadStatus = map.draw({ dzScale });
 
-      texture.scale.set(api.getScale());
-      texture.camPos.set(api.getCamPos());
-
-      context.updateMips(sampler);
+      renderer.reproject(map, satellitePos);
     }
 
-    function select(layer, point, radius) {
-      return api.select({ layer, point, radius });
+    function select(layer, radius) {
+      return map.select({ layer, point: ball.cursorPos(), radius });
     }
   }
 
@@ -9911,7 +10228,7 @@ function sendTile({ id, tile, transferables }) {
     return lon - period * 2 * PI;
   }
 
-  function setParams$1(params) {
+  function setParams(params) {
     const { PI } = Math;
 
     // TODO: Get user-supplied semiMinor & semiMajor axes?
@@ -10842,8 +11159,8 @@ function sendTile({ id, tile, transferables }) {
     }
   }
 
-  function init$1(userParams) {
-    const params = setParams$1(userParams);
+  function init(userParams) {
+    const params = setParams(userParams);
     const { ellipsoid, view, units } = params;
 
     const camera = initCamera(params);
@@ -10880,320 +11197,21 @@ function sendTile({ id, tile, transferables }) {
     }
   }
 
-  function setParams(userParams) {
-    const {
-      context,
-      pixelRatio,
-      globeRadius = 6371,
-      map,
-      flipY = false,
-      units = "radians",
-    } = userParams;
+  function initToolTip(ball, globeDiv) {
+    const toolTip = globeDiv.appendChild(newElement("div", "status"));
 
-    if (!context || !(context.gl instanceof WebGL2RenderingContext)) {
-      throw "satellite-view: no valid WebGL2RenderingContext!";
+    function update() {
+      // Print altitude and lon/lat of camera
+      const cameraPos = ball.cameraPos();
+      const alt = cameraPos[2].toPrecision(5);
+      toolTip.innerHTML = alt + "km " + lonLatString(...cameraPos);
+
+      if (ball.isOnScene()) {
+        toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos());
+      }
     }
 
-    const getPixelRatio = (pixelRatio)
-      ? () => userParams.pixelRatio
-      : () => window.devicePixelRatio;
-    // NOTE: getPixelRatio() returns the result of an object getter,
-    //       NOT the property value at the time of getPixelRatio definition
-    //  Thus, getPixelRatio will mirror any changes in the parent object
-
-    const maps = Array.isArray(map) ? map : [map];
-
-    const unitsPerRad = (units === "degrees")
-      ? 180.0 / Math.PI
-      : 1.0;
-
-    return { context, getPixelRatio, globeRadius, maps, flipY, unitsPerRad };
-  }
-
-  var vertexSrc = `#version 300 es
-
-in vec4 aVertexPosition;
-
-uniform vec2 uMaxRay;
-
-out highp vec2 vRayParm;
-
-void main(void) {
-  vRayParm = uMaxRay * aVertexPosition.xy;
-  gl_Position = aVertexPosition;
-}
-`;
-
-  var invertSrc = `uniform float uLat0;
-uniform float uCosLat0;
-uniform float uSinLat0;
-uniform float uTanLat0;
-
-float latChange(float x, float y, float sinC, float cosC) {
-  float xtan = x * uTanLat0;
-  float curveTerm = 0.5 * y * (xtan * xtan - y * y / 3.0);
-
-  return (max(sinC, abs(sinC * uTanLat0) ) < 0.1)
-    ? sinC * (y - sinC * (0.5 * xtan * x + curveTerm * sinC))
-    : asin(uSinLat0 * cosC + y * uCosLat0 * sinC) - uLat0;
-}
-
-vec2 xyToLonLat(vec2 xy, float sinC, float cosC) {
-  vec2 pHat = normalize(xy);
-  float dLon = atan(pHat.x * sinC,
-      uCosLat0 * cosC - pHat.y * uSinLat0 * sinC);
-  float dLat = latChange(pHat.x, pHat.y, sinC, cosC);
-  return vec2(dLon, dLat);
-}
-`;
-
-  var projectSrc = `const float ONEOVERTWOPI = 0.15915493667125702;
-
-uniform float uExpY0;
-uniform float uLatErr; // Difference of clipping to map limit
-
-float smallTan(float x) {
-  return (abs(x) < 0.1)
-    ? x * (1.0 + x * x / 3.0)
-    : tan(x);
-}
-
-float log1plusX(float x) {
-  return (abs(x) < 0.15)
-    ? x * (1.0 - x * (0.5 - x / 3.0 + x * x / 4.0))
-    : log( 1.0 + max(x, -0.999) );
-}
-
-vec2 projMercator(vec2 dLonLat) {
-  float tandlat = smallTan( 0.5 * (dLonLat[1] + uLatErr) );
-  float p = tandlat * uExpY0;
-  float q = tandlat / uExpY0;
-  return vec2(dLonLat[0], log1plusX(q) - log1plusX(-p)) * ONEOVERTWOPI;
-}
-`;
-
-  function glslInterp(strings, ...expressions) {
-    return strings.reduce( (acc, val, i) => acc + expressions[i-1]() + val );
-  }
-  var texLookup = (args) => glslInterp`const int nLod = ${args.nLod};
-
-uniform sampler2D uTextureSampler[nLod];
-uniform vec2 uCamMapPos[nLod];
-uniform vec2 uMapScales[nLod];
-
-float dateline(float x1) {
-  // Choose the correct texture coordinate in fragments crossing the
-  // antimeridian of a cylindrical coordinate system
-  // See http://vcg.isti.cnr.it/~tarini/no-seams/
-
-  // Alternate coordinate: forced across the antimeridian
-  float x2 = fract(x1 + 0.5) - 0.5;
-  // Choose the coordinate with the smaller screen-space derivative
-  return (fwidth(x1) < fwidth(x2) + 0.001) ? x1 : x2;
-}
-
-bool inside(vec2 pos) {
-  // Check if the supplied texture coordinate falls inside [0,1] X [0,1]
-  // We adjust the limits slightly to ensure we are 1 pixel away from the edges
-  return (
-      0.001 < pos.x && pos.x < 0.999 &&
-      0.001 < pos.y && pos.y < 0.999 );
-}
-
-vec4 sampleLOD(sampler2D samplers[nLod], vec2 coords[nLod]) {
-  return ${args.buildSelector}texture(samplers[0], coords[0]);
-}
-
-vec4 texLookup(vec2 dMerc) {
-  vec2 texCoords[nLod];
-
-  for (int i = 0; i < nLod; i++) {
-    texCoords[i] = uCamMapPos[i] + uMapScales[i] * dMerc;
-    texCoords[i].x = dateline(texCoords[i].x);
-  }
-
-  return sampleLOD(uTextureSampler, texCoords);
-}
-`;
-
-  var dither2x2 = `float threshold(float val, float limit) {
-  float decimal = fract(255.0 * val);
-  float dithered = (decimal < limit)
-    ? 0.0
-    : 1.0;
-  float adjustment = (dithered - decimal) / 255.0;
-  return val + adjustment;
-}
-
-vec3 dither2x2(vec2 position, vec3 color) {
-  // Based on https://github.com/hughsk/glsl-dither/blob/master/2x2.glsl
-  int x = int( mod(position.x, 2.0) );
-  int y = int( mod(position.y, 2.0) );
-  int index = x + y * 2;
-
-  float limit = 0.0;
-  if (index == 0) limit = 0.25;
-  if (index == 1) limit = 0.75;
-  if (index == 2) limit = 1.00;
-  if (index == 3) limit = 0.50;
-
-  // Use limit to toggle color between adjacent 8-bit values
-  return vec3(
-      threshold(color.r, limit),
-      threshold(color.g, limit),
-      threshold(color.b, limit)
-      );
-}
-`;
-
-  var fragMain = `float diffSqrt(float x) {
-  // Returns 1 - sqrt(1-x), with special handling for small x
-  float halfx = 0.5 * x;
-  return (x < 0.1)
-    ? halfx * (1.0 + 0.5 * halfx * (1.0 + halfx))
-    : 1.0 - sqrt(1.0 - x);
-}
-
-float horizonTaper(float gamma) {
-  // sqrt(gamma) = tan(ray_angle) / tan(horizon)
-  float horizonRatio = sqrt(gamma);
-  float delta = 2.0 * fwidth(horizonRatio);
-  return 1.0 - smoothstep(1.0 - delta, 1.0, horizonRatio);
-}
-
-in vec2 vRayParm;
-uniform float uHnorm;
-out vec4 pixColor;
-
-void main(void) {
-  // 0. Pre-compute some values
-  float p = length(vRayParm); // Tangent of ray angle
-  float p2 = p * p;
-  float gamma = p2 * uHnorm * (2.0 + uHnorm);
-  float sinC = (uHnorm + diffSqrt(gamma)) * p / (1.0 + p2);
-  float cosC = sqrt(1.0 - sinC * sinC);
-
-  // 1. Invert for longitude and latitude perturbations relative to camera
-  vec2 dLonLat = xyToLonLat(vRayParm, sinC, cosC);
-
-  // 2. Project to a change in the Mercator coordinates
-  vec2 dMerc = projMercator(dLonLat);
-
-  // 3. Lookup color from the appropriate texture
-  vec4 texelColor = texLookup(dMerc);
-
-  // Add cosine shading, dithering, and horizon tapering
-  vec3 dithered = dither2x2(gl_FragCoord.xy, cosC * texelColor.rgb);
-  pixColor = vec4(dithered.rgb, texelColor.a) * horizonTaper(gamma);
-}
-`;
-
-  const header = `#version 300 es
-precision highp float;
-precision highp sampler2D;
-
-`;
-
-  function buildShader(nLod) {
-    // Input nLod is the number of 'levels of detail' supplied
-    // in the set of multi-resolution maps
-    nLod = Math.max(1, Math.floor(nLod));
-
-    // Execute the 'tagged template literal' added to texLookup.js.glsl by
-    // ../../build/glsl-plugin.js. This will substitute nLod-dependent code
-    const args = { // Properties MUST match ./texLookup.js.glsl
-      nLod: () => nLod,
-      buildSelector: () => buildSelector(nLod),
-    };
-    const texLookupSrc = texLookup(args);
-
-    // Combine the GLSL-snippets into one shader source
-    const fragmentSrc = header + invertSrc + projectSrc +
-      texLookupSrc + dither2x2 + fragMain;
-
-    return {
-      vert: vertexSrc,
-      frag: fragmentSrc,
-    };
-  }
-
-  function buildSelector(n) {
-    // In the texLookup code, add lines to check each of the supplied textures,
-    // and sample the highest LOD that contains the current coordinate
-    let selector = ``; // eslint-disable-line quotes
-    while (--n) selector += `inside(coords[${n}])
-    ? texture(samplers[${n}], coords[${n}])
-    : `;
-    return selector;
-  }
-
-  function init(userParams) {
-    const { PI, cos, sin, tan, atan, exp, min, max } = Math;
-    const maxMercLat = 2.0 * atan(exp(PI)) - PI / 2.0;
-
-    const params = setParams(userParams);
-    const { context, maps, globeRadius, unitsPerRad } = params;
-
-    // Initialize shader program
-    const shaders = buildShader(maps.length);
-    const program = context.initProgram(shaders.vert, shaders.frag);
-    const { uniformSetters: setters, constructVao } = program;
-
-    // Initialize VAO
-    const aVertexPosition = context.initQuad();
-    const vao = constructVao({ attributes: { aVertexPosition } });
-
-    return {
-      canvas: context.gl.canvas,
-      draw,
-      setPixelRatio: (ratio) => { params.getPixelRatio = () => ratio; },
-      destroy: () => context.gl.canvas.remove(),
-    };
-
-    function draw(camPos, maxRayTan) {
-      program.use();
-
-      // Set uniforms related to camera position
-      const lat = camPos[1] / unitsPerRad;
-      setters.uLat0(lat);
-      setters.uCosLat0(cos(lat));
-      setters.uSinLat0(sin(lat));
-      setters.uTanLat0(tan(lat));
-
-      const clipLat = min(max(-maxMercLat, lat), maxMercLat);
-      setters.uLatErr(lat - clipLat);
-      setters.uExpY0(tan(PI / 4 + clipLat / 2));
-
-      setters.uHnorm(camPos[2] / globeRadius);
-      setters.uMaxRay(maxRayTan);
-
-      setters.uCamMapPos(maps.flatMap(m => [m.camPos[0], 1.0 - m.camPos[1]]));
-      setters.uMapScales(maps.flatMap(m => Array.from(m.scale)));
-      setters.uTextureSampler(maps.map(m => m.sampler));
-
-      // Draw the globe
-      const resized = context.resizeCanvasToDisplaySize(params.getPixelRatio());
-      context.bindFramebufferAndSetViewport();
-      context.gl.pixelStorei(context.gl.UNPACK_FLIP_Y_WEBGL, params.flipY);
-      context.clear();
-      context.draw({ vao });
-
-      return resized;
-    }
-  }
-
-  function printToolTip(toolTip, ball) {
-    // Input toolTip is an HTML element where positions will be printed
-    if (!toolTip) return;
-
-    // Print altitude and lon/lat of camera
-    const cameraPos = ball.cameraPos();
-    const alt = cameraPos[2].toPrecision(5);
-    toolTip.innerHTML = alt + "km " + lonLatString(...cameraPos);
-
-    if (ball.isOnScene()) {
-      toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos());
-    }
+    return { update };
   }
 
   function lonLatString(longitude, latitude) {
@@ -11233,12 +11251,10 @@ precision highp sampler2D;
     function add({ element, type, position }) {
       const [lon, lat, alt = 0.0] = position;
       const marker = {
-        element: getMarkerElement(element, type),
+        element: container.appendChild(getMarkerElement(element, type)),
         position: new Float64Array([lon, lat, alt]),
         screenPos: new Float64Array(2),
       };
-
-      container.appendChild(marker.element);
       setPosition(marker);
 
       // Add to the list, and return the pointer to the user
@@ -11253,16 +11269,8 @@ precision highp sampler2D;
     }
 
     function createSVG(type = "marker") {
-      const svgNS = "http://www.w3.org/2000/svg";
-
-      const svg = document.createElementNS(svgNS, "svg");
-      svg.setAttribute("class", type);
-
-      const use = document.createElementNS(svgNS, "use");
-      // Reference the relevant sprite from the SVG appended in params.js
-      use.setAttribute("href", "#" + type);
-      svg.appendChild(use);
-
+      const svg = newSVG("svg", { "class": type });
+      svg.appendChild(newSVG("use", { "href": "#" + type }));
       return svg;
     }
 
@@ -11286,37 +11294,66 @@ precision highp sampler2D;
     }
   }
 
-  function initGlobe(userParams) {
-    const params = setParams$4(userParams);
+  function initInfoBox(globeDiv) {
+    const container = globeDiv.parentNode;
+    const infoDivs = container.getElementsByClassName("infobox");
+    if (!infoDivs.length) return { showInfo: () => null, hideInfo: () => null };
 
-    return initMap(params)
-      .then(map => setup(map, params));
+    // Construct the parent info slider, insert before user info divs
+    const infoSlider = newElement("div", "infoslider");
+    container.insertBefore(infoSlider, infoDivs[0]);
+
+    // Construct the info slider header: span for coordinates, close button
+    const infoTopBar = infoSlider.appendChild(newElement("div", "infoTopBar"));
+    const coords = infoTopBar.appendChild(newElement("span"));
+    const infoCloseButton = infoTopBar.appendChild(newElement("button"));
+    infoCloseButton.appendChild(newSVG("svg", { "class": "icon stroke" }))
+      .appendChild(newSVG("use", { "href": "#close" }));
+
+    infoCloseButton.addEventListener("click", hideInfo);
+
+    // Move the user-supplied infoDivs to slider
+    Array.from(infoDivs).forEach(infoSlider.appendChild, infoSlider);
+
+    return { showInfo, hideInfo, infoCloseButton, destroy };
+
+    function showInfo([lon, lat]) {
+      coords.innerHTML = lon.toFixed(4) + " " + lat.toFixed(4);
+      infoSlider.classList.add("slid");
+      globeDiv.classList.add("shifted");
+    }
+
+    function hideInfo() {
+      infoSlider.classList.remove("slid");
+      globeDiv.classList.remove("shifted");
+    }
+
+    function destroy() {
+      Array.from(infoDivs).forEach(container.appendChild, container);
+      infoSlider.remove();
+    }
   }
 
-  function setup(map, params) {
-    const { globeDiv, toolTip, center, altitude, context } = params;
-    let requestID;
+  function initGlobe(userParams) {
+    const params = setParams$5(userParams);
+    const { globeDiv, center, altitude } = params;
 
-    const ball = init$1({
+    const ball = init({
       display: globeDiv,
       position: [center[0], center[1], altitude],
     });
-    const satView = init({
-      context: context,
-      globeRadius: ball.radius(),
-      map: map.texture,
-      flipY: false,
-      units: "degrees",
-    });
+
+    return initMap(ball, params)
+      .then(map => setup(map, ball, globeDiv));
+  }
+
+  function setup(map, ball, globeDiv) {
+    let requestID;
     const markers = initMarkers(ball, globeDiv);
+    const toolTip = initToolTip(ball, globeDiv);
+    const infoBox = initInfoBox(globeDiv);
 
-    return {
-      mapLoaded: map.loaded,
-      select: (layer, dxy) => map.select(layer, ball.cursorPos(), dxy),
-      showLayer: map.showLayer,
-      hideLayer: map.hideLayer,
-      getZoom: map.getZoom,
-
+    const api = Object.assign({}, map, infoBox, {
       startAnimation: () => { requestID = requestAnimationFrame(animate); },
       stopAnimation: () => cancelAnimationFrame(requestID),
       update,  // For requestAnimationFrame loops managed by the parent program
@@ -11329,10 +11366,11 @@ precision highp sampler2D;
       addMarker: markers.add,
       removeMarker: markers.remove,
 
-      destroy: () => (satView.destroy(), globeDiv.remove()),
-      breakLoop: 0,
-      version: params.version,
-    };
+      destroy: () => (map.destroy(), infoBox.destroy(), globeDiv.remove()),
+    });
+
+    delete api.draw; // From map.js. We expose the "update" wrapper instead
+    return api;
 
     function animate(time) {
       update(time);
@@ -11342,13 +11380,9 @@ precision highp sampler2D;
     function update(time) {
       const moving = ball.update(time * 0.001); // Convert time from ms to seconds
 
-      if (moving || map.loaded() < 1.0) {
-        map.draw(ball.cameraPos(), ball.radius(), ball.view);
-        satView.draw(ball.cameraPos(), ball.view.maxRay);
-      }
-
+      if (moving || map.mapLoaded() < 1.0) map.draw(ball.cameraPos());
       if (moving) markers.update();
-      if (ball.cursorChanged()) printToolTip(toolTip, ball);
+      if (ball.cursorChanged()) toolTip.update();
     }
   }
 

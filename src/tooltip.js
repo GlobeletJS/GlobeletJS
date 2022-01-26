@@ -1,15 +1,20 @@
-export function printToolTip(toolTip, ball) {
-  // Input toolTip is an HTML element where positions will be printed
-  if (!toolTip) return;
+import { newElement } from "./dom.js";
 
-  // Print altitude and lon/lat of camera
-  const cameraPos = ball.cameraPos();
-  const alt = cameraPos[2].toPrecision(5);
-  toolTip.innerHTML = alt + "km " + lonLatString(...cameraPos);
+export function initToolTip(ball, globeDiv) {
+  const toolTip = globeDiv.appendChild(newElement("div", "status"));
 
-  if (ball.isOnScene()) {
-    toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos());
+  function update() {
+    // Print altitude and lon/lat of camera
+    const cameraPos = ball.cameraPos();
+    const alt = cameraPos[2].toPrecision(5);
+    toolTip.innerHTML = alt + "km " + lonLatString(...cameraPos);
+
+    if (ball.isOnScene()) {
+      toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos());
+    }
   }
+
+  return { update };
 }
 
 function lonLatString(longitude, latitude) {
