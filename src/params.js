@@ -24,7 +24,13 @@ export function setParams(userParams) {
     height: rawHeight = globeDiv.clientHeight + 512,
     center = [0.0, 0.0],
     altitude = 20000,
+    infobox,
   } = userParams;
+
+  // Get the DIV element for the infobox, if supplied
+  const infoDiv = (typeof infobox === "string" && infobox.length)
+    ? document.getElementById(infobox)
+    : (infobox instanceof Element) ? infobox : null;
 
   // Force width >= height, and both powers of 2
   const nextPowerOf2 = v => 2 ** Math.ceil(Math.log2(v));
@@ -33,7 +39,7 @@ export function setParams(userParams) {
 
   return {
     style, mapboxToken, width, height,
-    center, altitude, globeDiv,
+    center, altitude, globeDiv, infoDiv,
   };
 }
 

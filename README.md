@@ -70,6 +70,10 @@ const globePromise = globeletjs.initGlobe(params);
 The `params` object supplied to initGlobe can have the following properties:
 - `container` (REQUIRED): An [HTML DIV element][] (or its string [ID][]) where
   the globe will be displayed
+- `infobox`: An [HTML DIV element][] (or its string [ID][]) where information
+  about a map feature will be displayed. NOTE: if supplied, this element will
+  be wrapped inside a sliding pane with a close button. See the API methods
+  `showInfo` and `hideInfo` for more information
 - `style` (REQUIRED): A link to a [MapLibre style document][Maplibre] 
   describing the map to be rendered. Please see below for some notes about
   [supported map styles](#supported-map-styles).
@@ -122,6 +126,15 @@ globePromise.then(globeAPI => {
 - `wasTapped()`: Returns the value of the wasTapped flag in [spinning-ball][]
 - `addMarker(options)`: Adds a marker to the globe. See markers section below
 - `removeMarker(marker)`: Removes a given marker from memory and from the DOM
+- `showInfo(coords)`: Reveals a side pane (or bottom pane on mobile) wrapping
+  the `infobox` DIV supplied on initialization, and prints the supplied
+  coordinates (presumably [lon, lat]) in the top bar. Note: if no `infobox`
+  was supplied on init, this method will do nothing
+- `hideInfo()`: Hides the infobox pane. This method will automatically be
+  called if a user presses the close button on the pane
+- `infoCloseButton`: A link to the close button on the info pane. Can be used
+  to execute custom scripts when the info pane is closed (e.g., to remove
+  markers)
 - `destroy()`: Clears memory / removes elements from document
 
 [requestAnimationFrame]: https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame

@@ -27,10 +27,10 @@ function setup(map, ball, renderer, globeDiv) {
     hideLayer: (l) => (loadStatus = 0, map.hideLayer(l)),
     getZoom: map.getZoom,
     destroy: renderer.destroy,
-    draw,
+    update,
   };
 
-  function draw(satellitePos) {
+  function update(satellitePos) {
     const hNorm = satellitePos[2] / ball.radius();
     const rayTanPerPixel = ball.view.topEdge() * 2 / ball.view.height();
     const dMap = hNorm * rayTanPerPixel * map.projection.scale(satellitePos);

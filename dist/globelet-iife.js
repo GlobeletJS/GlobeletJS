@@ -490,7 +490,13 @@ var globeletjs = (function (exports) {
       height: rawHeight = globeDiv.clientHeight + 512,
       center = [0.0, 0.0],
       altitude = 20000,
+      infobox,
     } = userParams;
+
+    // Get the DIV element for the infobox, if supplied
+    const infoDiv = (typeof infobox === "string" && infobox.length)
+      ? document.getElementById(infobox)
+      : (infobox instanceof Element) ? infobox : null;
 
     // Force width >= height, and both powers of 2
     const nextPowerOf2 = v => 2 ** Math.ceil(Math.log2(v));
@@ -499,7 +505,7 @@ var globeletjs = (function (exports) {
 
     return {
       style, mapboxToken, width, height,
-      center, altitude, globeDiv,
+      center, altitude, globeDiv, infoDiv,
     };
   }
 
@@ -9713,10 +9719,10 @@ function sendTile({ id, tile, transferables }) {
       hideLayer: (l) => (loadStatus = 0, map.hideLayer(l)),
       getZoom: map.getZoom,
       destroy: renderer.destroy,
-      draw,
+      update,
     };
 
-    function draw(satellitePos) {
+    function update(satellitePos) {
       const hNorm = satellitePos[2] / ball.radius();
       const rayTanPerPixel = ball.view.topEdge() * 2 / ball.view.height();
       const dMap = hNorm * rayTanPerPixel * map.projection.scale(satellitePos);
@@ -11294,26 +11300,24 @@ function sendTile({ id, tile, transferables }) {
     }
   }
 
-  function initInfoBox(globeDiv) {
-    const container = globeDiv.parentNode;
-    const infoDivs = container.getElementsByClassName("infobox");
-    if (!infoDivs.length) return { showInfo: () => null, hideInfo: () => null };
+  function initInfoBox(globeDiv, infoDiv) {
+    const nullFn = () => null;
+    if (!infoDiv) return { showInfo: nullFn, hideInfo: nullFn, destroy: nullFn };
 
-    // Construct the parent info slider, insert before user info divs
+    // Construct a slider div, with coords div and close button in a top bar
     const infoSlider = newElement("div", "infoslider");
-    container.insertBefore(infoSlider, infoDivs[0]);
-
-    // Construct the info slider header: span for coordinates, close button
-    const infoTopBar = infoSlider.appendChild(newElement("div", "infoTopBar"));
-    const coords = infoTopBar.appendChild(newElement("span"));
-    const infoCloseButton = infoTopBar.appendChild(newElement("button"));
+    globeDiv.parentNode.appendChild(infoSlider);
+    const topBar = infoSlider.appendChild(newElement("div", "infoTopBar"));
+    const coords = topBar.appendChild(newElement("span"));
+    const infoCloseButton = topBar.appendChild(newElement("button"));
     infoCloseButton.appendChild(newSVG("svg", { "class": "icon stroke" }))
       .appendChild(newSVG("use", { "href": "#close" }));
-
     infoCloseButton.addEventListener("click", hideInfo);
 
-    // Move the user-supplied infoDivs to slider
-    Array.from(infoDivs).forEach(infoSlider.appendChild, infoSlider);
+    // Store original position of info div, then wrap it inside the slider div
+    const { parentNode, nextSibling } = infoDiv;
+    infoSlider.appendChild(infoDiv);
+    infoDiv.classList.add("infobox");
 
     return { showInfo, hideInfo, infoCloseButton, destroy };
 
@@ -11329,14 +11333,19 @@ function sendTile({ id, tile, transferables }) {
     }
 
     function destroy() {
-      Array.from(infoDivs).forEach(container.appendChild, container);
+      // Restore info div to original position
+      if (nextSibling) {
+        parentNode.insertBefore(infoDiv, nextSibling);
+      } else {
+        parentNode.appendChild(infoDiv);
+      }
       infoSlider.remove();
     }
   }
 
   function initGlobe(userParams) {
     const params = setParams$5(userParams);
-    const { globeDiv, center, altitude } = params;
+    const { center, altitude, globeDiv, infoDiv } = params;
 
     const ball = init({
       display: globeDiv,
@@ -11344,16 +11353,16 @@ function sendTile({ id, tile, transferables }) {
     });
 
     return initMap(ball, params)
-      .then(map => setup(map, ball, globeDiv));
+      .then(map => setup(map, ball, globeDiv, infoDiv));
   }
 
-  function setup(map, ball, globeDiv) {
+  function setup(map, ball, globeDiv, infoDiv) {
     let requestID;
     const markers = initMarkers(ball, globeDiv);
     const toolTip = initToolTip(ball, globeDiv);
-    const infoBox = initInfoBox(globeDiv);
+    const infoBox = initInfoBox(globeDiv, infoDiv);
 
-    const api = Object.assign({}, map, infoBox, {
+    return Object.assign({}, map, infoBox, {
       startAnimation: () => { requestID = requestAnimationFrame(animate); },
       stopAnimation: () => cancelAnimationFrame(requestID),
       update,  // For requestAnimationFrame loops managed by the parent program
@@ -11369,9 +11378,6 @@ function sendTile({ id, tile, transferables }) {
       destroy: () => (map.destroy(), infoBox.destroy(), globeDiv.remove()),
     });
 
-    delete api.draw; // From map.js. We expose the "update" wrapper instead
-    return api;
-
     function animate(time) {
       update(time);
       requestID = requestAnimationFrame(animate);
@@ -11380,7 +11386,7 @@ function sendTile({ id, tile, transferables }) {
     function update(time) {
       const moving = ball.update(time * 0.001); // Convert time from ms to seconds
 
-      if (moving || map.mapLoaded() < 1.0) map.draw(ball.cameraPos());
+      if (moving || map.mapLoaded() < 1.0) map.update(ball.cameraPos());
       if (moving) markers.update();
       if (ball.cursorChanged()) toolTip.update();
     }
