@@ -8085,8 +8085,8 @@ function triangulate(geometry) {
     case "MultiPolygon":
       return coordinates.map(indexPolygon).reduce((acc, cur) => {
         const indexShift = acc.position.length / 2;
-        acc.position.push(...cur.position);
-        acc.indices.push(...cur.indices.map(h => h + indexShift));
+        cur.position.forEach(c => acc.position.push(c));
+        cur.indices.map(h => h + indexShift).forEach(c => acc.indices.push(c));
         return acc;
       });
     default:
