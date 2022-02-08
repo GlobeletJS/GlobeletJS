@@ -7,12 +7,9 @@ import { initInfoBox } from "./infobox.js";
 
 export function initGlobe(userParams) {
   const params = setParams(userParams);
-  const { center, altitude, globeDiv, infoDiv } = params;
+  const { ballParams, globeDiv, infoDiv } = params;
 
-  const ball = spinningBall.init({
-    display: globeDiv,
-    position: [center[0], center[1], altitude],
-  });
+  const ball = spinningBall.init(ballParams);
 
   return initMap(ball, params)
     .then(map => setup(map, ball, globeDiv, infoDiv));

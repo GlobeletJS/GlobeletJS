@@ -14,10 +14,10 @@ export function initMap(ball, params) {
 
   return tileSetter
     .init({ context, framebuffer, style, mapboxToken, projScale: true })
-    .promise.then(map => setup(map, ball, renderer, globeDiv));
+    .promise.then(map => setup(map, ball, renderer));
 }
 
-function setup(map, ball, renderer, globeDiv) {
+function setup(map, ball, renderer) {
   let loadStatus = 0;
 
   return {

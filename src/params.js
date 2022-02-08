@@ -1,4 +1,3 @@
-import * as yawgl from "yawgl";
 import sprite from "../dist/globelet.svg";
 import { newElement } from "./dom.js";
 
@@ -25,6 +24,8 @@ export function setParams(userParams) {
     center = [0.0, 0.0],
     altitude = 20000,
     infobox,
+    minLongitude, minLatitude, minAltitude,
+    maxLongitude, maxLatitude, maxAltitude,
   } = userParams;
 
   // Get the DIV element for the infobox, if supplied
@@ -37,10 +38,14 @@ export function setParams(userParams) {
   const height = nextPowerOf2(rawHeight);
   const width = Math.max(nextPowerOf2(rawWidth), height);
 
-  return {
-    style, mapboxToken, width, height,
-    center, altitude, globeDiv, infoDiv,
+  const ballParams = {
+    display: globeDiv,
+    position: [center[0], center[1], altitude],
+    minLongitude, minLatitude, minAltitude,
+    maxLongitude, maxLatitude, maxAltitude,
   };
+
+  return { style, mapboxToken, width, height, globeDiv, infoDiv, ballParams };
 }
 
 function fail(message) {

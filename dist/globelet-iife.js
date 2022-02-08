@@ -1,6 +1,123 @@
 var globeletjs = (function (exports) {
   'use strict';
 
+  var sprite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sprite">
+  <!--Default image for favicon-->
+  <text y="1em" font-size="80">&#127823;</text>
+
+  <!--Spritesheet symbols: not displayed unless "used"-->
+  <symbol id="hamburger" viewBox="0 0 100 70">
+    <rect width="100" height="10" />
+    <rect width="100" height="10" y="30" />
+    <rect width="100" height="10" y="60" />
+  </symbol>
+
+  <symbol id="close" viewBox="0 0 32 32">
+    <line x1="2" y1="2" x2="30" y2="30" />
+    <line x1="2" y1="30" x2="30" y2="2" />
+  </symbol>
+
+  <symbol id="gt" viewBox="0 0 32 32">
+    <line x1="8" y1="2" x2="24" y2="16" />
+    <line x1="24" y1="16" x2="8" y2="30" />
+  </symbol>
+
+  <symbol id="gear" viewBox="0 0 400 400">
+    <!--https://observablehq.com/@jjhembd/gear-icon-generator-->
+    <path d="M390.00,200.00
+      L386.35,237.07L329.16,247.95L311.63,280.75L334.35,334.35
+      L305.56,357.98L257.42,325.23L221.83,336.03L200.00,390.00
+      L162.93,386.35L152.05,329.16L119.25,311.63L65.65,334.35
+      L42.02,305.56L74.77,257.42L63.97,221.83L10.00,200.00
+      L13.65,162.93L70.84,152.05L88.37,119.25L65.65,65.65
+      L94.44,42.02L142.58,74.77L178.17,63.97L200.00,10.00
+      L237.07,13.65L247.95,70.84L280.75,88.37L334.35,65.65
+      L357.98,94.44L325.23,142.58L336.03,178.17z
+      M285.54,200.00A85.54,85.54,0,1,0,285.54,200.27z" />
+  </symbol>
+
+  <symbol id="marker" viewBox="0 0 24 24">
+    <!-- Follows baseline-place-24px.svg from 
+         https://material.io/tools/icons/?icon=place&style=baseline -->
+    <path d="M12,2
+      C8.13,2 5,5.13 5,9
+      c0,5.25 7,13 7,13
+      s7,-7.75 7,-13
+      c0,-3.87 -3.13,-7 -7,-7z
+      m0,9.5
+      c-1.38,0 -2.5,-1.12 -2.5,-2.5
+      s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z" />
+  </symbol>
+
+  <symbol id="spot" viewBox="0 0 12 12">
+    <circle cx="6" cy="6" r="5" />
+  </symbol>
+</svg>
+`;
+
+  function newElement(tagName, className) {
+    const el = document.createElement(tagName);
+    if (className !== undefined) el.className = className;
+    return el;
+  }
+
+  function newSVG(tagName, attributes) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", tagName);
+    Object.entries(attributes).forEach(([k, v]) => svg.setAttribute(k, v));
+    return svg;
+  }
+
+  function setParams$5(userParams) {
+    // Get the containing DIV element, and set its CSS class
+    const container = (typeof userParams.container === "string")
+      ? document.getElementById(userParams.container)
+      : userParams.container;
+    if (!(container instanceof Element)) fail$4("missing container element");
+    container.classList.add("globelet");
+    if (container.clientWidth <= 64 || container.clientHeight <= 64) {
+      fail$4("container must be at least 64x64 pixels");
+    }
+
+    // Add Elements for globe interface, svg sprite
+    const globeDiv = container.appendChild(newElement("div", "main"));
+    globeDiv.insertAdjacentHTML("afterbegin", sprite);
+
+    // Get user-supplied parameters
+    const {
+      style, mapboxToken,
+      width: rawWidth = globeDiv.clientWidth + 512,
+      height: rawHeight = globeDiv.clientHeight + 512,
+      center = [0.0, 0.0],
+      altitude = 20000,
+      infobox,
+      minLongitude, minLatitude, minAltitude,
+      maxLongitude, maxLatitude, maxAltitude,
+    } = userParams;
+
+    // Get the DIV element for the infobox, if supplied
+    const infoDiv = (typeof infobox === "string" && infobox.length)
+      ? document.getElementById(infobox)
+      : (infobox instanceof Element) ? infobox : null;
+
+    // Force width >= height, and both powers of 2
+    const nextPowerOf2 = v => 2 ** Math.ceil(Math.log2(v));
+    const height = nextPowerOf2(rawHeight);
+    const width = Math.max(nextPowerOf2(rawWidth), height);
+
+    const ballParams = {
+      display: globeDiv,
+      position: [center[0], center[1], altitude],
+      minLongitude, minLatitude, minAltitude,
+      maxLongitude, maxLatitude, maxAltitude,
+    };
+
+    return { style, mapboxToken, width, height, globeDiv, infoDiv, ballParams };
+  }
+
+  function fail$4(message) {
+    throw Error("GlobeletJS: " + message);
+  }
+
   function createUniformSetter(gl, program, info, textureUnit) {
     const { name, type, size } = info;
     const isArray = name.endsWith("[0]");
@@ -158,7 +275,7 @@ var globeletjs = (function (exports) {
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      fail$4("Unable to link the program", gl.getProgramInfoLog(program));
+      fail$3("Unable to link the program", gl.getProgramInfoLog(program));
     }
 
     const { constantSetters, constructVao } = initAttributes(gl, program);
@@ -179,13 +296,13 @@ var globeletjs = (function (exports) {
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
       const log = gl.getShaderInfoLog(shader);
       gl.deleteShader(shader);
-      fail$4("An error occured compiling the shader", log);
+      fail$3("An error occured compiling the shader", log);
     }
 
     return shader;
   }
 
-  function fail$4(msg, log) {
+  function fail$3(msg, log) {
     throw Error("yawgl.initProgram: " + msg + ":\n" + log);
   }
 
@@ -400,117 +517,6 @@ var globeletjs = (function (exports) {
       }
       gl.bindVertexArray(null);
     }
-  }
-
-  var sprite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sprite">
-  <!--Default image for favicon-->
-  <text y="1em" font-size="80">&#127823;</text>
-
-  <!--Spritesheet symbols: not displayed unless "used"-->
-  <symbol id="hamburger" viewBox="0 0 100 70">
-    <rect width="100" height="10" />
-    <rect width="100" height="10" y="30" />
-    <rect width="100" height="10" y="60" />
-  </symbol>
-
-  <symbol id="close" viewBox="0 0 32 32">
-    <line x1="2" y1="2" x2="30" y2="30" />
-    <line x1="2" y1="30" x2="30" y2="2" />
-  </symbol>
-
-  <symbol id="gt" viewBox="0 0 32 32">
-    <line x1="8" y1="2" x2="24" y2="16" />
-    <line x1="24" y1="16" x2="8" y2="30" />
-  </symbol>
-
-  <symbol id="gear" viewBox="0 0 400 400">
-    <!--https://observablehq.com/@jjhembd/gear-icon-generator-->
-    <path d="M390.00,200.00
-      L386.35,237.07L329.16,247.95L311.63,280.75L334.35,334.35
-      L305.56,357.98L257.42,325.23L221.83,336.03L200.00,390.00
-      L162.93,386.35L152.05,329.16L119.25,311.63L65.65,334.35
-      L42.02,305.56L74.77,257.42L63.97,221.83L10.00,200.00
-      L13.65,162.93L70.84,152.05L88.37,119.25L65.65,65.65
-      L94.44,42.02L142.58,74.77L178.17,63.97L200.00,10.00
-      L237.07,13.65L247.95,70.84L280.75,88.37L334.35,65.65
-      L357.98,94.44L325.23,142.58L336.03,178.17z
-      M285.54,200.00A85.54,85.54,0,1,0,285.54,200.27z" />
-  </symbol>
-
-  <symbol id="marker" viewBox="0 0 24 24">
-    <!-- Follows baseline-place-24px.svg from 
-         https://material.io/tools/icons/?icon=place&style=baseline -->
-    <path d="M12,2
-      C8.13,2 5,5.13 5,9
-      c0,5.25 7,13 7,13
-      s7,-7.75 7,-13
-      c0,-3.87 -3.13,-7 -7,-7z
-      m0,9.5
-      c-1.38,0 -2.5,-1.12 -2.5,-2.5
-      s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z" />
-  </symbol>
-
-  <symbol id="spot" viewBox="0 0 12 12">
-    <circle cx="6" cy="6" r="5" />
-  </symbol>
-</svg>
-`;
-
-  function newElement(tagName, className) {
-    const el = document.createElement(tagName);
-    if (className !== undefined) el.className = className;
-    return el;
-  }
-
-  function newSVG(tagName, attributes) {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", tagName);
-    Object.entries(attributes).forEach(([k, v]) => svg.setAttribute(k, v));
-    return svg;
-  }
-
-  function setParams$5(userParams) {
-    // Get the containing DIV element, and set its CSS class
-    const container = (typeof userParams.container === "string")
-      ? document.getElementById(userParams.container)
-      : userParams.container;
-    if (!(container instanceof Element)) fail$3("missing container element");
-    container.classList.add("globelet");
-    if (container.clientWidth <= 64 || container.clientHeight <= 64) {
-      fail$3("container must be at least 64x64 pixels");
-    }
-
-    // Add Elements for globe interface, svg sprite
-    const globeDiv = container.appendChild(newElement("div", "main"));
-    globeDiv.insertAdjacentHTML("afterbegin", sprite);
-
-    // Get user-supplied parameters
-    const {
-      style, mapboxToken,
-      width: rawWidth = globeDiv.clientWidth + 512,
-      height: rawHeight = globeDiv.clientHeight + 512,
-      center = [0.0, 0.0],
-      altitude = 20000,
-      infobox,
-    } = userParams;
-
-    // Get the DIV element for the infobox, if supplied
-    const infoDiv = (typeof infobox === "string" && infobox.length)
-      ? document.getElementById(infobox)
-      : (infobox instanceof Element) ? infobox : null;
-
-    // Force width >= height, and both powers of 2
-    const nextPowerOf2 = v => 2 ** Math.ceil(Math.log2(v));
-    const height = nextPowerOf2(rawHeight);
-    const width = Math.max(nextPowerOf2(rawWidth), height);
-
-    return {
-      style, mapboxToken, width, height,
-      center, altitude, globeDiv, infoDiv,
-    };
-  }
-
-  function fail$3(message) {
-    throw Error("GlobeletJS: " + message);
   }
 
   function setParams$4(userParams) {
@@ -9706,10 +9712,10 @@ function sendTile({ id, tile, transferables }) {
     const renderer = initReprojection(ball, context, framebuffer.sampler);
 
     return init$4({ context, framebuffer, style, mapboxToken, projScale: true })
-      .promise.then(map => setup$1(map, ball, renderer, globeDiv));
+      .promise.then(map => setup$1(map, ball, renderer));
   }
 
-  function setup$1(map, ball, renderer, globeDiv) {
+  function setup$1(map, ball, renderer) {
     let loadStatus = 0;
 
     return {
@@ -10205,27 +10211,28 @@ function sendTile({ id, tile, transferables }) {
     }
   }
 
-  function checkCoords(p, n) {
-    const isArray = Array.isArray(p) ||
-      (ArrayBuffer.isView(p) && !(p instanceof DataView));
-    return isArray && p.length >= n &&
-      p.slice(0, n).every(Number.isFinite);
-  }
-
   function getUnitConversion(units) {
     // Internally, spinning-ball assumes geodetic coordinates in these units:
     //   [longitude (radians), latitude (radians), altitude (kilometers)]
     // Externally, the user may want longitude and latitude in degrees.
     // Construct the functions that convert user inputs to internal coordinates,
     // and invert internal coordinates to the user's units
-    const uPerRad = (units === "degrees")
-      ? 180.0 / Math.PI
-      : 1.0;
+    const maxLon = (units === "degrees") ? 180.0 : Math.PI;
+    const maxLat = maxLon / 2;
+    const uPerRad = maxLon / Math.PI;
 
     return {
-      convert: c => new Float64Array([c[0] / uPerRad, c[1] / uPerRad, c[2]]),
-      invert: c => new Float64Array([c[0] * uPerRad, c[1] * uPerRad, c[2]]),
+      maxLon, maxLat,
+      convert: (c) => new Float64Array([c[0] / uPerRad, c[1] / uPerRad, c[2]]),
+      invert: (c) => new Float64Array([c[0] * uPerRad, c[1] * uPerRad, c[2]]),
     };
+  }
+
+  function checkCoords(p, n) {
+    const isArray = Array.isArray(p) ||
+      (ArrayBuffer.isView(p) && !(p instanceof DataView));
+    return isArray && p.length >= n &&
+      p.slice(0, n).every(Number.isFinite);
   }
 
   function wrapLongitude(lon) {
@@ -10234,52 +10241,92 @@ function sendTile({ id, tile, transferables }) {
     return lon - period * 2 * PI;
   }
 
-  function setParams(params) {
-    const { PI } = Math;
+  function initBounds([minLon, minLat, minAlt], [maxLon, maxLat, maxAlt]) {
+    const { min, max, PI } = Math;
 
+    const hWidth = (minLon < maxLon)
+      ? (maxLon - minLon) / 2
+      : (maxLon - minLon) / 2 + PI;
+
+    const centerLon = minLon + hWidth;
+
+    return { check, apply };
+
+    function check([lon, lat, alt]) {
+      const dLon = wrapLongitude(lon - centerLon);
+      if (dLon < -hWidth || hWidth < dLon) return false;
+      if (lat < minLat || maxLat < lat) return false;
+      if (alt < minAlt || maxAlt < alt) return false;
+      return true;
+    }
+
+    function apply([lon, lat, alt]) {
+      const dLon = wrapLongitude(lon - centerLon);
+      const limdlon = min(max(-hWidth, dLon), hWidth);
+      const clipLon = wrapLongitude(centerLon + limdlon);
+
+      const clipLat = min(max(minLat, lat), maxLat);
+      const clipAlt = min(max(minAlt, alt), maxAlt);
+
+      return [clipLon, clipLat, clipAlt];
+    }
+  }
+
+  function setParams(params) {
     // TODO: Get user-supplied semiMinor & semiMajor axes?
     const ellipsoid = initEllipsoid();
 
+    const { units: userUnits = "degrees" } = params;
+    if (!["degrees", "radians"].includes(userUnits)) {
+      fail("units must be either degrees or radians");
+    }
+    const units = getUnitConversion(userUnits);
+
     const {
       display,
-      units: userUnits = "degrees",
       position = [0.0, 0.0, ellipsoid.meanRadius * 4.0],
-      minHeight = ellipsoid.meanRadius() * 0.00001,
-      maxHeight = ellipsoid.meanRadius() * 8.0,
+      minAltitude: minAlt = ellipsoid.meanRadius() * 0.00001,
+      maxAltitude: maxAlt = ellipsoid.meanRadius() * 8.0,
+      minLongitude: minLon = -units.maxLon,
+      maxLongitude: maxLon = units.maxLon,
+      minLatitude: minLat = -units.maxLat,
+      maxLatitude: maxLat = units.maxLat,
     } = params;
 
     if (!(display instanceof Element)) fail("missing display element");
 
-    if (!["degrees", "radians"].includes(userUnits)) fail("invalid units");
-    const units = getUnitConversion(userUnits);
+    check(minAlt, 0, ellipsoid.meanRadius() * 100000.0, "minAltitude");
+    check(maxAlt, 0, ellipsoid.meanRadius() * 100000.0, "maxAltitude");
+    if (minAlt > maxAlt) fail("minAltitude must be <= maxAltitude");
 
-    // minHeight, maxHeight must be Numbers, positive and not too big
-    const heights = [minHeight, maxHeight];
-    if (!heights.every(h => Number.isFinite(h) && h > 0)) {
-      fail("minHeight, maxHeight must be Numbers > 0");
-    } else if (heights.some(h => h > ellipsoid.meanRadius() * 100000.0)) {
-      fail("minHeight, maxHeight must be somewhere below Jupiter");
-    }
+    check(minLon, -units.maxLon, units.maxLon, "minLongitude");
+    check(maxLon, -units.maxLon, units.maxLon, "maxLongitude");
+    check(minLat, -units.maxLat, units.maxLat, "minLatitude");
+    check(maxLat, -units.maxLat, units.maxLat, "maxLatitude");
+    if (minLat > maxLat) fail("minLatitude must be <= maxLatitude");
 
-    // initialPosition must be a valid coordinate in the given units
-    if (!checkCoords(position, 3)) fail("invalid center array");
+    const b1 = units.convert([minLon, minLat, minAlt]);
+    const b2 = units.convert([maxLon, maxLat, maxAlt]);
+    const bounds = initBounds(b1, b2);
+
+    if (!checkCoords(position, 3)) fail("position must be an Array of 3 numbers");
     const initialPosition = units.convert(position);
-    const [lon, lat, alt] = initialPosition;
-    const outOfRange =
-      lon < -PI || lon > PI ||
-      lat < -PI / 2 || lat > PI / 2 ||
-      alt < minHeight || alt > maxHeight;
-    if (outOfRange) fail ("initial position out of range");
+    if (!bounds.check(initialPosition)) fail ("initial position out of range");
 
     return {
-      ellipsoid, display, units, initialPosition, minHeight, maxHeight,
+      ellipsoid, display, units, initialPosition, bounds, minAlt, maxAlt,
       view: initView(display, 25.0), // Computes ray params at point on display
     };
   }
 
+  function check(c, lb, ub, name) {
+    if (Number.isFinite(c) && (lb <= c) && (c <= ub)) return true;
+    fail(name + " must be a Number between " + lb + " and " + ub);
+  }
+
   function fail(message) {
     // TODO: Should some errors be RangeErrors or TypeErrors instead?
-    throw Error("spinning-ball: " + message);
+    throw Error("spinning-ball parameters check: " + message);
   }
 
   /**
@@ -10451,7 +10498,6 @@ function sendTile({ id, tile, transferables }) {
     // coordinates and a rotation matrix
     // These are suitable for rendering Relative To Eye (RTE), as described in
     // P Cozzi, 3D Engine Design for Virtual Globes, www.virtualglobebook.com
-    const { min, max, PI } = Math;
     const position = new Float64Array([0.0, 0.0, 0.0, 1.0]);
     const rotation = create$1();  // Note: single precision!! (Float32Array)
     const inverse  = create$1();
@@ -10466,10 +10512,6 @@ function sendTile({ id, tile, transferables }) {
     };
 
     function update(geodetic) {
-      // Wrap longitude, clip latitude
-      geodetic[0] = wrapLongitude(geodetic[0]);
-      geodetic[1] = min(max(-PI / 2.0, geodetic[1]), PI / 2.0);
-
       // Compute ECEF coordinates. NOTE WebGL coordinate convention:
       // +x to right, +y to top of screen, and +z into the screen
       ellipsoid.geodetic2ecef(position, geodetic);
@@ -10488,7 +10530,7 @@ function sendTile({ id, tile, transferables }) {
   }
 
   function initCamera(params) {
-    const { view, ellipsoid, initialPosition } = params;
+    const { view, ellipsoid, bounds, initialPosition } = params;
     const rayVec = new Float64Array(3);
     const ecefTmp = new Float64Array(3);
 
@@ -10509,7 +10551,8 @@ function sendTile({ id, tile, transferables }) {
 
     function update(dPos) {
       if (dPos.every(c => c == 0.0)) return;
-      position.set(position.map((c, i) => c + dPos[i]));
+      const newPos = position.map((c, i) => c + dPos[i]);
+      position.set(bounds.apply(newPos));
       ecef.update(position);
     }
 
@@ -10882,7 +10925,7 @@ function sendTile({ id, tile, transferables }) {
   }
 
   function initCursor3d(params, camera) {
-    const { initialPosition, minHeight, maxHeight } = params;
+    const { initialPosition, minAlt, maxAlt } = params;
 
     const cursor2d = initCursor2d(params, camera);
 
@@ -10892,7 +10935,7 @@ function sendTile({ id, tile, transferables }) {
     const zoomPosition = new Float64Array(3);
     // Track target screen ray and altitude for zooming
     const zoomRay = new Float64Array([0.0, 0.0, -1.0, 0.0]);
-    let targetHeight = initialPosition[2];
+    let targetAlt = initialPosition[2];
 
     // Flags about the cursor state
     let onScene = false;
@@ -10916,7 +10959,7 @@ function sendTile({ id, tile, transferables }) {
       wasTapped: () => wasTapped,
       isZooming: () => zooming,
       zoomFixed: () => zoomFix,
-      zoomTarget: () => targetHeight,
+      zoomTarget: () => targetAlt,
 
       // Functions to update local state
       update,
@@ -10951,16 +10994,16 @@ function sendTile({ id, tile, transferables }) {
 
       if (cursor2d.zoomed()) {
         zooming = true;
-        targetHeight *= cursor2d.zscale();
-        targetHeight = Math.min(Math.max(minHeight, targetHeight), maxHeight);
+        targetAlt *= cursor2d.zscale();
+        targetAlt = Math.min(Math.max(minAlt, targetAlt), maxAlt);
       }
 
       cursor2d.reset();
     }
 
-    function stopZoom(height) {
+    function stopZoom(alt) {
       zooming = zoomFix = false;
-      if (height !== undefined) targetHeight = height;
+      if (alt !== undefined) targetAlt = alt;
     }
   }
 
@@ -11033,10 +11076,10 @@ function sendTile({ id, tile, transferables }) {
       const [dz, dVz] = oscillatorChange(stretch, velocity[2], dt, w0);
       velocity[2] += dVz;
 
-      // Scale rotational velocity by the ratio of the height change
-      const heightScale = 1.0 + dz / position[2];
-      velocity[0] *= heightScale;
-      velocity[1] *= heightScale;
+      // Scale rotational velocity by the ratio of the altitude change
+      const altScale = 1.0 + dz / position[2];
+      velocity[0] *= altScale;
+      velocity[1] *= altScale;
 
       const dPos = new Float64Array([0.0, 0.0, dz]);
       const centerDist = position[2] + dz + ellipsoid.meanRadius();
@@ -11345,12 +11388,9 @@ function sendTile({ id, tile, transferables }) {
 
   function initGlobe(userParams) {
     const params = setParams$5(userParams);
-    const { center, altitude, globeDiv, infoDiv } = params;
+    const { ballParams, globeDiv, infoDiv } = params;
 
-    const ball = init({
-      display: globeDiv,
-      position: [center[0], center[1], altitude],
-    });
+    const ball = init(ballParams);
 
     return initMap(ball, params)
       .then(map => setup(map, ball, globeDiv, infoDiv));
