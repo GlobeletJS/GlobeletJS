@@ -4,7 +4,7 @@ const noImage = "<p>(No image)</p>";
 
 export function getWikiData(wikidataid) {
   if (!wikidataid || !wikidataid.length) {
-    const data = { 
+    const data = {
       image: noImage,
       text: "",
       sources: "<p><i>" + neAttribution + "</i></p>",
@@ -40,8 +40,8 @@ function parseEntityData(data) {
     ? newTabLink(sitelink, label + " on Wikipedia")
     : "";
   const sources = "<p>" + moreinfo + "</p>" +
-    "<p><i>" + neAttribution + ".<br>" + 
-    "Other information from " + wikiAttribution + ".</i></p>"; 
+    "<p><i>" + neAttribution + ".<br>" +
+    "Other information from " + wikiAttribution + ".</i></p>";
 
   return { image, text, sources };
 }
