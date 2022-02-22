@@ -14,9 +14,9 @@
       "type": "vector",
       "url": "https://api.maptiler.com/tiles/v3/tiles.json?key=mrAq6zQEFxOkanukNbGm"
     },
-    "states": {
+    "mountains": {
       "type": "geojson",
-      "data": "./us-states.geojson",
+      "data": "./ne_50m_geography_regions_elevation_points.json",
       "minzoom": 0,
       "maxzoom": 14,
       "tileSize": 512
@@ -1020,17 +1020,17 @@
     "source-layer": "place",
     "type": "symbol"
   }, {
-    "id": "states",
-    "type": "line",
-    "source": "states",
-    "source-layer": "states",
+    "id": "mountains",
+    "type": "circle",
+    "source": "mountains",
+    "source-layer": "mountains",
+    "interactive": true,
     "layout": {
       "visibility": "visible"
     },
     "paint": {
-      "line-width": 2,
-      "line-color": "red",
-      "line-opacity": 1
+      "circle-radius": 6.0,
+      "circle-color": "#000000"
     }
   }],
   "id": "basic"

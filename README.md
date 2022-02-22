@@ -6,8 +6,8 @@ Inspired by [Leaflet][]: a simple, light-weight mapping library, without the
 distortion of flat maps. Show your GIS data in 3D, as it would appear from 
 space.
 
-See a [simple example][] with geojson data displayed over the [Basic Style][]
-from [OpenMapTiles][].
+See a [simple interactive example][example] with mountain peaks from 
+[Natural Earth][] displayed over the [Basic Style][] from [OpenMapTiles][].
 
 Like Leaflet, we design for *simplicity*, *performance*, and *usability*.
 
@@ -15,7 +15,8 @@ Need lots of features, like 3D buildings? Try [CesiumJS][]. Globelet will only d
 a few things, but it will do them well.
 
 [Leaflet]: https://github.com/Leaflet/Leaflet
-[simple example]: https://globeletjs.org/examples/geojson/index.html
+[example]: https://globeletjs.org/examples/mountains/index.html
+[Natural Earth]: https://www.naturalearthdata.com/
 [Basic Style]: https://github.com/openmaptiles/maptiler-basic-gl-style
 [OpenMapTiles]: https://openmaptiles.org/
 [CesiumJS]: https://github.com/AnalyticalGraphicsInc/cesium
@@ -86,6 +87,14 @@ The `params` object supplied to initGlobe can have the following properties:
   [longitude, latitude] in degrees. Default: [0.0, 0.0]
 - `altitude`: The initial altitude of the camera, in kilometers.
   Default: 20000
+- `minAltitude`: The minimum altitude of the camera, in kilometers.
+  Default: `0.0001 * earthRadius`
+- `maxAltitude`: The maximum altitude of the camera, in kilometers.
+  Default: `8.0 * earthRadius`
+- `minLongitude, minLatitude, maxLongitude, maxLatitude`: Geographic limits on
+  camera movement. By default, the globe can be spun and zoomed to any point
+  on the planet. Setting these limits will restrict motion to a specified box.
+  See [spinning-ball][] documentation for further details
 
 The returned Promise resolves to an API handle, which you can use to interact
 with the globe, as described in the next section.

@@ -1,0 +1,28 @@
+html {
+  overflow: hidden;
+  height: 100%;
+}
+body {
+  height: 100%;
+  border: 0;
+  margin: 0;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.globelet .spot {
+  width: 18px;
+  height: 18px;
+}
+.globelet .infobox {
+  padding: 12px;
+}
+.globelet .infobox h1 {
+  margin-top: 6px;
+}
+.globelet .infobox img {
+  margin: 0px -12px 0px -12px;
+  max-width: calc(100% + 24px);
+}
+#globe {
+  height: 100%;
+}

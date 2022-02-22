@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title>Globelet - Beta</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="icon" type="image/svg+xml" href="../../dist/globelet.svg">
+
+    <link rel="stylesheet" type="text/css" href="../../dist/globelet.css">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+  </head>
+
+  <body>
+    <div id="globe">
+      <div id="infobox"></div>
+    </div>
+  </body>
+
+  <script type="module">
+    import { initGlobe } from "../../dist/globelet.js";
+    import { initMountains } from "./mountains.js";
+
+    initGlobe({
+      container: "globe",
+      infobox: "infobox",
+      style: "./klokantech-basic-style-geojson.json",
+      center: [-100.0, 38.5],
+      altitude: 15000,
+      minAltitude: 3,
+    }).then(globe => {
+      const findMountain = initMountains(globe);
+      requestAnimationFrame(animate);
+
+      function animate(time) {
+        globe.update(time);
+        findMountain();
+        requestAnimationFrame(animate);
+      }
+    }).catch(console.log);
+  </script>
+</html>
