@@ -26,7 +26,7 @@ export function initMountains(globe) {
       marker = globe.addMarker({ position, type: "marker" });
       describeMountain(position, mountain.properties);
     } else {
-      spot = globe.addMarker({ position, type: "spot" });
+      spot = globe.addMarker({ element: createIcon(), position });
     }
   }
 
@@ -35,12 +35,25 @@ export function initMountains(globe) {
 
     const title = "<h1>" + name + "</h1>";
     const elev = "<p><b>Elevation:</b> " + elevation + "m</p>";
+    // const json = "<pre>" + JSON.stringify(properties, null, 2) + "</pre>";
 
     getWikiData(wikidataid).then(data => {
       const { image, text, sources } = data;
 
-      infobox.innerHTML = title + image + elev + text + sources;
+      infobox.innerHTML = title + image + elev + text + sources; // + json;
       globe.showInfo(position);
     });
   }
+}
+
+function createIcon() {
+  const svg = newSVG("svg", { "class": "mtIcon" });
+  svg.appendChild(newSVG("use", { "href": "#mtIcon" }));
+  return svg;
+}
+
+function newSVG(tagName, attributes) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", tagName);
+  Object.entries(attributes).forEach(([k, v]) => svg.setAttribute(k, v));
+  return svg;
 }

@@ -26,3 +26,12 @@ body {
 #globe {
   height: 100%;
 }
+.globelet .mtIcon {
+  display: inline-block;
+  position: absolute;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  fill: #502916;
+}

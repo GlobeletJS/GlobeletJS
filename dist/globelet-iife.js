@@ -11312,7 +11312,8 @@ function sendTile({ id, tile, transferables }) {
     }
 
     function getMarkerElement(element, type) {
-      return (element && ["DIV", "IMG", "SVG"].includes(element.nodeName))
+      const validNodeNames = ["DIV", "div", "IMG", "img", "SVG", "svg"];
+      return (element && validNodeNames.includes(element.nodeName))
         ? element
         : createSVG(type);
     }

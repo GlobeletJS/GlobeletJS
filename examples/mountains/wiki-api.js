@@ -1,5 +1,16 @@
+const neAttribution = "Coordinates and elevations from " +
+  newTabLink("https://www.naturalearthdata.com/", "Natural Earth");
+const noImage = "<p>(No image)</p>";
+
 export function getWikiData(wikidataid) {
-  if (!wikidataid || !wikidataid.length) return Promise.resolve({});
+  if (!wikidataid || !wikidataid.length) {
+    const data = { 
+      image: noImage,
+      text: "",
+      sources: "<p><i>" + neAttribution + "</i></p>",
+    };
+    return Promise.resolve(data);
+  }
 
   const root = "https://www.wikidata.org/wiki/Special:EntityData/";
   const url = root + wikidataid + ".json";
@@ -18,18 +29,19 @@ function parseEntityData(data) {
 
   const image = (imagefile && imagefile.length)
     ? '<img src="' + getImageSrc(imagefile) + '">'
-    : "<p>(No image)</p>";
+    : noImage;
 
   const text = (description)
     ? "<p><b>Description:</b> " + description + "</p>"
     : "";
 
-  const attribution = newTabLink("https://www.wikidata.org/", "WikiData");
+  const wikiAttribution = newTabLink("https://www.wikidata.org/", "WikiData");
   const moreinfo = (label && sitelink)
     ? newTabLink(sitelink, label + " on Wikipedia")
     : "";
   const sources = "<p>" + moreinfo + "</p>" +
-    "<p><i>Source: " + attribution + "</i></p>"; 
+    "<p><i>" + neAttribution + ".<br>" + 
+    "Other information from " + wikiAttribution + ".</i></p>"; 
 
   return { image, text, sources };
 }
