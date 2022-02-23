@@ -7,7 +7,7 @@ distortion of flat maps. Show your GIS data in 3D, as it would appear from
 space.
 
 See a [simple interactive example][example] with mountain peaks from 
-[Natural Earth][] displayed over the [Basic Style][] from [OpenMapTiles][].
+[Natural Earth][] displayed over the [Mapbox Outdoors Style][outdoors].
 
 Like Leaflet, we design for *simplicity*, *performance*, and *usability*.
 
@@ -17,8 +17,7 @@ a few things, but it will do them well.
 [Leaflet]: https://github.com/Leaflet/Leaflet
 [example]: https://globeletjs.org/examples/mountains/index.html
 [Natural Earth]: https://www.naturalearthdata.com/
-[Basic Style]: https://github.com/openmaptiles/maptiler-basic-gl-style
-[OpenMapTiles]: https://openmaptiles.org/
+[outdoors]: https://www.mapbox.com/maps/outdoors
 [CesiumJS]: https://github.com/AnalyticalGraphicsInc/cesium
 
 ![tests](https://github.com/GlobeletJS/GlobeletJS/actions/workflows/node.js.yml/badge.svg)
