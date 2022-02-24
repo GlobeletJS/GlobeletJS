@@ -1,6 +1,5 @@
-import * as yawgl from "yawgl";
-import { version } from "../package.json";
 import sprite from "../dist/globelet.svg";
+import { newElement } from "./dom.js";
 
 export function setParams(userParams) {
   // Get the containing DIV element, and set its CSS class
@@ -8,19 +7,14 @@ export function setParams(userParams) {
     ? document.getElementById(userParams.container)
     : userParams.container;
   if (!(container instanceof Element)) fail("missing container element");
+  container.classList.add("globelet");
   if (container.clientWidth <= 64 || container.clientHeight <= 64) {
     fail("container must be at least 64x64 pixels");
   }
-  container.classList.add("globelet");
 
-  // Add Elements for globe interface, svg sprite, status bar, canvas
-  const globeDiv = addChild("div", "main", container);
+  // Add Elements for globe interface, svg sprite
+  const globeDiv = container.appendChild(newElement("div", "main"));
   globeDiv.insertAdjacentHTML("afterbegin", sprite);
-  const toolTip = addChild( "div", "status", globeDiv);
-  const canvas = addChild("canvas", "map", globeDiv);
-
-  // Get a WebGL context with added yawgl functionality
-  const context = yawgl.initContext(canvas);
 
   // Get user-supplied parameters
   const {
@@ -29,25 +23,29 @@ export function setParams(userParams) {
     height: rawHeight = globeDiv.clientHeight + 512,
     center = [0.0, 0.0],
     altitude = 20000,
+    infobox,
+    minLongitude, minLatitude, minAltitude,
+    maxLongitude, maxLatitude, maxAltitude,
   } = userParams;
+
+  // Get the DIV element for the infobox, if supplied
+  const infoDiv = (typeof infobox === "string" && infobox.length)
+    ? document.getElementById(infobox)
+    : (infobox instanceof Element) ? infobox : null;
 
   // Force width >= height, and both powers of 2
   const nextPowerOf2 = v => 2 ** Math.ceil(Math.log2(v));
   const height = nextPowerOf2(rawHeight);
   const width = Math.max(nextPowerOf2(rawWidth), height);
 
-  return { version,
-    style, mapboxToken,
-    width, height,
-    globeDiv, context, toolTip,
-    center, altitude,
+  const ballParams = {
+    display: globeDiv,
+    position: [center[0], center[1], altitude],
+    minLongitude, minLatitude, minAltitude,
+    maxLongitude, maxLatitude, maxAltitude,
   };
 
-  function addChild(tagName, className, parentElement) {
-    const child = document.createElement(tagName);
-    child.className = className;
-    return parentElement.appendChild(child);
-  }
+  return { style, mapboxToken, width, height, globeDiv, infoDiv, ballParams };
 }
 
 function fail(message) {

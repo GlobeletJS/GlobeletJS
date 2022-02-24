@@ -6,8 +6,8 @@ Inspired by [Leaflet][]: a simple, light-weight mapping library, without the
 distortion of flat maps. Show your GIS data in 3D, as it would appear from 
 space.
 
-See a [simple example][] with geojson data displayed over the [Basic Style][]
-from [OpenMapTiles][].
+See a [simple interactive example][example] with mountain peaks from 
+[Natural Earth][] displayed over the [Mapbox Outdoors Style][outdoors].
 
 Like Leaflet, we design for *simplicity*, *performance*, and *usability*.
 
@@ -15,9 +15,9 @@ Need lots of features, like 3D buildings? Try [CesiumJS][]. Globelet will only d
 a few things, but it will do them well.
 
 [Leaflet]: https://github.com/Leaflet/Leaflet
-[simple example]: https://globeletjs.org/examples/geojson/index.html
-[Basic Style]: https://github.com/openmaptiles/maptiler-basic-gl-style
-[OpenMapTiles]: https://openmaptiles.org/
+[example]: https://globeletjs.org/examples/mountains/index.html
+[Natural Earth]: https://www.naturalearthdata.com/
+[outdoors]: https://www.mapbox.com/maps/outdoors
 [CesiumJS]: https://github.com/AnalyticalGraphicsInc/cesium
 
 ![tests](https://github.com/GlobeletJS/GlobeletJS/actions/workflows/node.js.yml/badge.svg)
@@ -70,6 +70,10 @@ const globePromise = globeletjs.initGlobe(params);
 The `params` object supplied to initGlobe can have the following properties:
 - `container` (REQUIRED): An [HTML DIV element][] (or its string [ID][]) where
   the globe will be displayed
+- `infobox`: An [HTML DIV element][] (or its string [ID][]) where information
+  about a map feature will be displayed. NOTE: if supplied, this element will
+  be wrapped inside a sliding pane with a close button. See the API methods
+  `showInfo` and `hideInfo` for more information
 - `style` (REQUIRED): A link to a [MapLibre style document][Maplibre] 
   describing the map to be rendered. Please see below for some notes about
   [supported map styles](#supported-map-styles).
@@ -82,6 +86,14 @@ The `params` object supplied to initGlobe can have the following properties:
   [longitude, latitude] in degrees. Default: [0.0, 0.0]
 - `altitude`: The initial altitude of the camera, in kilometers.
   Default: 20000
+- `minAltitude`: The minimum altitude of the camera, in kilometers.
+  Default: `0.0001 * earthRadius`
+- `maxAltitude`: The maximum altitude of the camera, in kilometers.
+  Default: `8.0 * earthRadius`
+- `minLongitude, minLatitude, maxLongitude, maxLatitude`: Geographic limits on
+  camera movement. By default, the globe can be spun and zoomed to any point
+  on the planet. Setting these limits will restrict motion to a specified box.
+  See [spinning-ball][] documentation for further details
 
 The returned Promise resolves to an API handle, which you can use to interact
 with the globe, as described in the next section.
@@ -122,6 +134,15 @@ globePromise.then(globeAPI => {
 - `wasTapped()`: Returns the value of the wasTapped flag in [spinning-ball][]
 - `addMarker(options)`: Adds a marker to the globe. See markers section below
 - `removeMarker(marker)`: Removes a given marker from memory and from the DOM
+- `showInfo(coords)`: Reveals a side pane (or bottom pane on mobile) wrapping
+  the `infobox` DIV supplied on initialization, and prints the supplied
+  coordinates (presumably [lon, lat]) in the top bar. Note: if no `infobox`
+  was supplied on init, this method will do nothing
+- `hideInfo()`: Hides the infobox pane. This method will automatically be
+  called if a user presses the close button on the pane
+- `infoCloseButton`: A link to the close button on the info pane. Can be used
+  to execute custom scripts when the info pane is closed (e.g., to remove
+  markers)
 - `destroy()`: Clears memory / removes elements from document
 
 [requestAnimationFrame]: https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame

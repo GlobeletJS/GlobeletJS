@@ -1,3 +1,5 @@
+import { newSVG } from "./dom.js";
+
 export function initMarkers(globe, container) {
   const markerList = [];
 
@@ -10,12 +12,10 @@ export function initMarkers(globe, container) {
   function add({ element, type, position }) {
     const [lon, lat, alt = 0.0] = position;
     const marker = {
-      element: getMarkerElement(element, type),
+      element: container.appendChild(getMarkerElement(element, type)),
       position: new Float64Array([lon, lat, alt]),
       screenPos: new Float64Array(2),
     };
-
-    container.appendChild(marker.element);
     setPosition(marker);
 
     // Add to the list, and return the pointer to the user
@@ -24,22 +24,15 @@ export function initMarkers(globe, container) {
   }
 
   function getMarkerElement(element, type) {
-    return (element && ["DIV", "IMG", "SVG"].includes(element.nodeName))
+    const validNodeNames = ["DIV", "div", "IMG", "img", "SVG", "svg"];
+    return (element && validNodeNames.includes(element.nodeName))
       ? element
       : createSVG(type);
   }
 
   function createSVG(type = "marker") {
-    const svgNS = "http://www.w3.org/2000/svg";
-
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("class", type);
-
-    const use = document.createElementNS(svgNS, "use");
-    // Reference the relevant sprite from the SVG appended in params.js
-    use.setAttribute("href", "#" + type);
-    svg.appendChild(use);
-
+    const svg = newSVG("svg", { "class": type });
+    svg.appendChild(newSVG("use", { "href": "#" + type }));
     return svg;
   }
 

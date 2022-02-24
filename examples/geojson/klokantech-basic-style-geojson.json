@@ -20,13 +20,6 @@
       "minzoom": 0,
       "maxzoom": 14,
       "tileSize": 512
-    },
-    "mountains": {
-      "type": "geojson",
-      "data": "./ne_50m_geography_regions_elevation_points.json",
-      "minzoom": 0,
-      "maxzoom": 14,
-      "tileSize": 512
     }
   },
   "glyphs": "https://api.maptiler.com/fonts/{fontstack}/{range}.pbf?key=mrAq6zQEFxOkanukNbGm",
@@ -1038,19 +1031,6 @@
       "line-width": 2,
       "line-color": "red",
       "line-opacity": 1
-    }
-  }, {
-    "id": "mountains",
-    "type": "circle",
-    "source": "mountains",
-    "source-layer": "mountains",
-    "interactive": true,
-    "layout": {
-      "visibility": "visible"
-    },
-    "paint": {
-      "circle-radius": 6.0,
-      "circle-color": "#000000"
     }
   }],
   "id": "basic"

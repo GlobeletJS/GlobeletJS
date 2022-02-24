@@ -1,3 +1,120 @@
+var sprite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sprite">
+  <!--Default image for favicon-->
+  <text y="1em" font-size="80">&#127823;</text>
+
+  <!--Spritesheet symbols: not displayed unless "used"-->
+  <symbol id="hamburger" viewBox="0 0 100 70">
+    <rect width="100" height="10" />
+    <rect width="100" height="10" y="30" />
+    <rect width="100" height="10" y="60" />
+  </symbol>
+
+  <symbol id="close" viewBox="0 0 32 32">
+    <line x1="2" y1="2" x2="30" y2="30" />
+    <line x1="2" y1="30" x2="30" y2="2" />
+  </symbol>
+
+  <symbol id="gt" viewBox="0 0 32 32">
+    <line x1="8" y1="2" x2="24" y2="16" />
+    <line x1="24" y1="16" x2="8" y2="30" />
+  </symbol>
+
+  <symbol id="gear" viewBox="0 0 400 400">
+    <!--https://observablehq.com/@jjhembd/gear-icon-generator-->
+    <path d="M390.00,200.00
+      L386.35,237.07L329.16,247.95L311.63,280.75L334.35,334.35
+      L305.56,357.98L257.42,325.23L221.83,336.03L200.00,390.00
+      L162.93,386.35L152.05,329.16L119.25,311.63L65.65,334.35
+      L42.02,305.56L74.77,257.42L63.97,221.83L10.00,200.00
+      L13.65,162.93L70.84,152.05L88.37,119.25L65.65,65.65
+      L94.44,42.02L142.58,74.77L178.17,63.97L200.00,10.00
+      L237.07,13.65L247.95,70.84L280.75,88.37L334.35,65.65
+      L357.98,94.44L325.23,142.58L336.03,178.17z
+      M285.54,200.00A85.54,85.54,0,1,0,285.54,200.27z" />
+  </symbol>
+
+  <symbol id="marker" viewBox="0 0 24 24">
+    <!-- Follows baseline-place-24px.svg from 
+         https://material.io/tools/icons/?icon=place&style=baseline -->
+    <path d="M12,2
+      C8.13,2 5,5.13 5,9
+      c0,5.25 7,13 7,13
+      s7,-7.75 7,-13
+      c0,-3.87 -3.13,-7 -7,-7z
+      m0,9.5
+      c-1.38,0 -2.5,-1.12 -2.5,-2.5
+      s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z" />
+  </symbol>
+
+  <symbol id="spot" viewBox="0 0 12 12">
+    <circle cx="6" cy="6" r="5" />
+  </symbol>
+</svg>
+`;
+
+function newElement(tagName, className) {
+  const el = document.createElement(tagName);
+  if (className !== undefined) el.className = className;
+  return el;
+}
+
+function newSVG(tagName, attributes) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", tagName);
+  Object.entries(attributes).forEach(([k, v]) => svg.setAttribute(k, v));
+  return svg;
+}
+
+function setParams$5(userParams) {
+  // Get the containing DIV element, and set its CSS class
+  const container = (typeof userParams.container === "string")
+    ? document.getElementById(userParams.container)
+    : userParams.container;
+  if (!(container instanceof Element)) fail$4("missing container element");
+  container.classList.add("globelet");
+  if (container.clientWidth <= 64 || container.clientHeight <= 64) {
+    fail$4("container must be at least 64x64 pixels");
+  }
+
+  // Add Elements for globe interface, svg sprite
+  const globeDiv = container.appendChild(newElement("div", "main"));
+  globeDiv.insertAdjacentHTML("afterbegin", sprite);
+
+  // Get user-supplied parameters
+  const {
+    style, mapboxToken,
+    width: rawWidth = globeDiv.clientWidth + 512,
+    height: rawHeight = globeDiv.clientHeight + 512,
+    center = [0.0, 0.0],
+    altitude = 20000,
+    infobox,
+    minLongitude, minLatitude, minAltitude,
+    maxLongitude, maxLatitude, maxAltitude,
+  } = userParams;
+
+  // Get the DIV element for the infobox, if supplied
+  const infoDiv = (typeof infobox === "string" && infobox.length)
+    ? document.getElementById(infobox)
+    : (infobox instanceof Element) ? infobox : null;
+
+  // Force width >= height, and both powers of 2
+  const nextPowerOf2 = v => 2 ** Math.ceil(Math.log2(v));
+  const height = nextPowerOf2(rawHeight);
+  const width = Math.max(nextPowerOf2(rawWidth), height);
+
+  const ballParams = {
+    display: globeDiv,
+    position: [center[0], center[1], altitude],
+    minLongitude, minLatitude, minAltitude,
+    maxLongitude, maxLatitude, maxAltitude,
+  };
+
+  return { style, mapboxToken, width, height, globeDiv, infoDiv, ballParams };
+}
+
+function fail$4(message) {
+  throw Error("GlobeletJS: " + message);
+}
+
 function createUniformSetter(gl, program, info, textureUnit) {
   const { name, type, size } = info;
   const isArray = name.endsWith("[0]");
@@ -155,7 +272,7 @@ function initProgram(gl, vertexSrc, fragmentSrc) {
   gl.linkProgram(program);
 
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    fail$4("Unable to link the program", gl.getProgramInfoLog(program));
+    fail$3("Unable to link the program", gl.getProgramInfoLog(program));
   }
 
   const { constantSetters, constructVao } = initAttributes(gl, program);
@@ -176,13 +293,13 @@ function loadShader(gl, type, source) {
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
     const log = gl.getShaderInfoLog(shader);
     gl.deleteShader(shader);
-    fail$4("An error occured compiling the shader", log);
+    fail$3("An error occured compiling the shader", log);
   }
 
   return shader;
 }
 
-function fail$4(msg, log) {
+function fail$3(msg, log) {
   throw Error("yawgl.initProgram: " + msg + ":\n" + log);
 }
 
@@ -399,112 +516,328 @@ function initContext(arg) {
   }
 }
 
-var version = "0.1.3";
-
-var sprite = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="sprite">
-  <!--Default image for favicon-->
-  <text y="1em" font-size="80">&#127823;</text>
-
-  <!--Spritesheet symbols: not displayed unless "used"-->
-  <symbol id="hamburger" viewBox="0 0 100 70">
-    <rect width="100" height="10" />
-    <rect width="100" height="10" y="30" />
-    <rect width="100" height="10" y="60" />
-  </symbol>
-
-  <symbol id="close" viewBox="0 0 32 32">
-    <line x1="2" y1="2" x2="30" y2="30" />
-    <line x1="2" y1="30" x2="30" y2="2" />
-  </symbol>
-
-  <symbol id="gt" viewBox="0 0 32 32">
-    <line x1="8" y1="2" x2="24" y2="16" />
-    <line x1="24" y1="16" x2="8" y2="30" />
-  </symbol>
-
-  <symbol id="gear" viewBox="0 0 400 400">
-    <!--https://observablehq.com/@jjhembd/gear-icon-generator-->
-    <path d="M390.00,200.00
-      L386.35,237.07L329.16,247.95L311.63,280.75L334.35,334.35
-      L305.56,357.98L257.42,325.23L221.83,336.03L200.00,390.00
-      L162.93,386.35L152.05,329.16L119.25,311.63L65.65,334.35
-      L42.02,305.56L74.77,257.42L63.97,221.83L10.00,200.00
-      L13.65,162.93L70.84,152.05L88.37,119.25L65.65,65.65
-      L94.44,42.02L142.58,74.77L178.17,63.97L200.00,10.00
-      L237.07,13.65L247.95,70.84L280.75,88.37L334.35,65.65
-      L357.98,94.44L325.23,142.58L336.03,178.17z
-      M285.54,200.00A85.54,85.54,0,1,0,285.54,200.27z" />
-  </symbol>
-
-  <symbol id="marker" viewBox="0 0 24 24">
-    <!-- Follows baseline-place-24px.svg from 
-         https://material.io/tools/icons/?icon=place&style=baseline -->
-    <path d="M12,2
-      C8.13,2 5,5.13 5,9
-      c0,5.25 7,13 7,13
-      s7,-7.75 7,-13
-      c0,-3.87 -3.13,-7 -7,-7z
-      m0,9.5
-      c-1.38,0 -2.5,-1.12 -2.5,-2.5
-      s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z" />
-  </symbol>
-
-  <symbol id="spot" viewBox="0 0 12 12">
-    <circle cx="6" cy="6" r="5" />
-  </symbol>
-</svg>
-`;
-
 function setParams$4(userParams) {
-  // Get the containing DIV element, and set its CSS class
-  const container = (typeof userParams.container === "string")
-    ? document.getElementById(userParams.container)
-    : userParams.container;
-  if (!(container instanceof Element)) fail$3("missing container element");
-  if (container.clientWidth <= 64 || container.clientHeight <= 64) {
-    fail$3("container must be at least 64x64 pixels");
-  }
-  container.classList.add("globelet");
-
-  // Add Elements for globe interface, svg sprite, status bar, canvas
-  const globeDiv = addChild("div", "main", container);
-  globeDiv.insertAdjacentHTML("afterbegin", sprite);
-  const toolTip = addChild( "div", "status", globeDiv);
-  const canvas = addChild("canvas", "map", globeDiv);
-
-  // Get a WebGL context with added yawgl functionality
-  const context = initContext(canvas);
-
-  // Get user-supplied parameters
   const {
-    style, mapboxToken,
-    width: rawWidth = globeDiv.clientWidth + 512,
-    height: rawHeight = globeDiv.clientHeight + 512,
-    center = [0.0, 0.0],
-    altitude = 20000,
+    context,
+    pixelRatio,
+    globeRadius = 6371,
+    map,
+    flipY = false,
+    units = "radians",
   } = userParams;
 
-  // Force width >= height, and both powers of 2
-  const nextPowerOf2 = v => 2 ** Math.ceil(Math.log2(v));
-  const height = nextPowerOf2(rawHeight);
-  const width = Math.max(nextPowerOf2(rawWidth), height);
+  if (!context || !(context.gl instanceof WebGL2RenderingContext)) {
+    throw "satellite-view: no valid WebGL2RenderingContext!";
+  }
 
-  return { version,
-    style, mapboxToken,
-    width, height,
-    globeDiv, context, toolTip,
-    center, altitude,
+  const getPixelRatio = (pixelRatio)
+    ? () => userParams.pixelRatio
+    : () => window.devicePixelRatio;
+  // NOTE: getPixelRatio() returns the result of an object getter,
+  //       NOT the property value at the time of getPixelRatio definition
+  //  Thus, getPixelRatio will mirror any changes in the parent object
+
+  const maps = Array.isArray(map) ? map : [map];
+
+  const unitsPerRad = (units === "degrees")
+    ? 180.0 / Math.PI
+    : 1.0;
+
+  return { context, getPixelRatio, globeRadius, maps, flipY, unitsPerRad };
+}
+
+var vertexSrc = `#version 300 es
+
+in vec4 aVertexPosition;
+
+uniform vec2 uMaxRay;
+
+out highp vec2 vRayParm;
+
+void main(void) {
+  vRayParm = uMaxRay * aVertexPosition.xy;
+  gl_Position = aVertexPosition;
+}
+`;
+
+var invertSrc = `uniform float uLat0;
+uniform float uCosLat0;
+uniform float uSinLat0;
+uniform float uTanLat0;
+
+float latChange(float x, float y, float sinC, float cosC) {
+  float xtan = x * uTanLat0;
+  float curveTerm = 0.5 * y * (xtan * xtan - y * y / 3.0);
+
+  return (max(sinC, abs(sinC * uTanLat0) ) < 0.1)
+    ? sinC * (y - sinC * (0.5 * xtan * x + curveTerm * sinC))
+    : asin(uSinLat0 * cosC + y * uCosLat0 * sinC) - uLat0;
+}
+
+vec2 xyToLonLat(vec2 xy, float sinC, float cosC) {
+  vec2 pHat = normalize(xy);
+  float dLon = atan(pHat.x * sinC,
+      uCosLat0 * cosC - pHat.y * uSinLat0 * sinC);
+  float dLat = latChange(pHat.x, pHat.y, sinC, cosC);
+  return vec2(dLon, dLat);
+}
+`;
+
+var projectSrc = `const float ONEOVERTWOPI = 0.15915493667125702;
+
+uniform float uExpY0;
+uniform float uLatErr; // Difference of clipping to map limit
+
+float smallTan(float x) {
+  return (abs(x) < 0.1)
+    ? x * (1.0 + x * x / 3.0)
+    : tan(x);
+}
+
+float log1plusX(float x) {
+  return (abs(x) < 0.15)
+    ? x * (1.0 - x * (0.5 - x / 3.0 + x * x / 4.0))
+    : log( 1.0 + max(x, -0.999) );
+}
+
+vec2 projMercator(vec2 dLonLat) {
+  float tandlat = smallTan( 0.5 * (dLonLat[1] + uLatErr) );
+  float p = tandlat * uExpY0;
+  float q = tandlat / uExpY0;
+  return vec2(dLonLat[0], log1plusX(q) - log1plusX(-p)) * ONEOVERTWOPI;
+}
+`;
+
+function glslInterp(strings, ...expressions) {
+  return strings.reduce( (acc, val, i) => acc + expressions[i-1]() + val );
+}
+var texLookup = (args) => glslInterp`const int nLod = ${args.nLod};
+
+uniform sampler2D uTextureSampler[nLod];
+uniform vec2 uCamMapPos[nLod];
+uniform vec2 uMapScales[nLod];
+
+float dateline(float x1) {
+  // Choose the correct texture coordinate in fragments crossing the
+  // antimeridian of a cylindrical coordinate system
+  // See http://vcg.isti.cnr.it/~tarini/no-seams/
+
+  // Alternate coordinate: forced across the antimeridian
+  float x2 = fract(x1 + 0.5) - 0.5;
+  // Choose the coordinate with the smaller screen-space derivative
+  return (fwidth(x1) < fwidth(x2) + 0.001) ? x1 : x2;
+}
+
+bool inside(vec2 pos) {
+  // Check if the supplied texture coordinate falls inside [0,1] X [0,1]
+  // We adjust the limits slightly to ensure we are 1 pixel away from the edges
+  return (
+      0.001 < pos.x && pos.x < 0.999 &&
+      0.001 < pos.y && pos.y < 0.999 );
+}
+
+vec4 sampleLOD(sampler2D samplers[nLod], vec2 coords[nLod]) {
+  return ${args.buildSelector}texture(samplers[0], coords[0]);
+}
+
+vec4 texLookup(vec2 dMerc) {
+  vec2 texCoords[nLod];
+
+  for (int i = 0; i < nLod; i++) {
+    texCoords[i] = uCamMapPos[i] + uMapScales[i] * dMerc;
+    texCoords[i].x = dateline(texCoords[i].x);
+  }
+
+  return sampleLOD(uTextureSampler, texCoords);
+}
+`;
+
+var dither2x2 = `float threshold(float val, float limit) {
+  float decimal = fract(255.0 * val);
+  float dithered = (decimal < limit)
+    ? 0.0
+    : 1.0;
+  float adjustment = (dithered - decimal) / 255.0;
+  return val + adjustment;
+}
+
+vec3 dither2x2(vec2 position, vec3 color) {
+  // Based on https://github.com/hughsk/glsl-dither/blob/master/2x2.glsl
+  int x = int( mod(position.x, 2.0) );
+  int y = int( mod(position.y, 2.0) );
+  int index = x + y * 2;
+
+  float limit = 0.0;
+  if (index == 0) limit = 0.25;
+  if (index == 1) limit = 0.75;
+  if (index == 2) limit = 1.00;
+  if (index == 3) limit = 0.50;
+
+  // Use limit to toggle color between adjacent 8-bit values
+  return vec3(
+      threshold(color.r, limit),
+      threshold(color.g, limit),
+      threshold(color.b, limit)
+      );
+}
+`;
+
+var fragMain = `float diffSqrt(float x) {
+  // Returns 1 - sqrt(1-x), with special handling for small x
+  float halfx = 0.5 * x;
+  return (x < 0.1)
+    ? halfx * (1.0 + 0.5 * halfx * (1.0 + halfx))
+    : 1.0 - sqrt(1.0 - x);
+}
+
+float horizonTaper(float gamma) {
+  // sqrt(gamma) = tan(ray_angle) / tan(horizon)
+  float horizonRatio = sqrt(gamma);
+  float delta = 2.0 * fwidth(horizonRatio);
+  return 1.0 - smoothstep(1.0 - delta, 1.0, horizonRatio);
+}
+
+in vec2 vRayParm;
+uniform float uHnorm;
+out vec4 pixColor;
+
+void main(void) {
+  // 0. Pre-compute some values
+  float p = length(vRayParm); // Tangent of ray angle
+  float p2 = p * p;
+  float gamma = p2 * uHnorm * (2.0 + uHnorm);
+  float sinC = (uHnorm + diffSqrt(gamma)) * p / (1.0 + p2);
+  float cosC = sqrt(1.0 - sinC * sinC);
+
+  // 1. Invert for longitude and latitude perturbations relative to camera
+  vec2 dLonLat = xyToLonLat(vRayParm, sinC, cosC);
+
+  // 2. Project to a change in the Mercator coordinates
+  vec2 dMerc = projMercator(dLonLat);
+
+  // 3. Lookup color from the appropriate texture
+  vec4 texelColor = texLookup(dMerc);
+
+  // Add cosine shading, dithering, and horizon tapering
+  vec3 dithered = dither2x2(gl_FragCoord.xy, cosC * texelColor.rgb);
+  pixColor = vec4(dithered.rgb, texelColor.a) * horizonTaper(gamma);
+}
+`;
+
+const header = `#version 300 es
+precision highp float;
+precision highp sampler2D;
+
+`;
+
+function buildShader(nLod) {
+  // Input nLod is the number of 'levels of detail' supplied
+  // in the set of multi-resolution maps
+  nLod = Math.max(1, Math.floor(nLod));
+
+  // Execute the 'tagged template literal' added to texLookup.js.glsl by
+  // ../../build/glsl-plugin.js. This will substitute nLod-dependent code
+  const args = { // Properties MUST match ./texLookup.js.glsl
+    nLod: () => nLod,
+    buildSelector: () => buildSelector(nLod),
+  };
+  const texLookupSrc = texLookup(args);
+
+  // Combine the GLSL-snippets into one shader source
+  const fragmentSrc = header + invertSrc + projectSrc +
+    texLookupSrc + dither2x2 + fragMain;
+
+  return {
+    vert: vertexSrc,
+    frag: fragmentSrc,
+  };
+}
+
+function buildSelector(n) {
+  // In the texLookup code, add lines to check each of the supplied textures,
+  // and sample the highest LOD that contains the current coordinate
+  let selector = ``; // eslint-disable-line quotes
+  while (--n) selector += `inside(coords[${n}])
+    ? texture(samplers[${n}], coords[${n}])
+    : `;
+  return selector;
+}
+
+function init$5(userParams) {
+  const { PI, cos, sin, tan, atan, exp, min, max } = Math;
+  const maxMercLat = 2.0 * atan(exp(PI)) - PI / 2.0;
+
+  const params = setParams$4(userParams);
+  const { context, maps, globeRadius, unitsPerRad } = params;
+
+  // Initialize shader program
+  const shaders = buildShader(maps.length);
+  const program = context.initProgram(shaders.vert, shaders.frag);
+  const { uniformSetters: setters, constructVao } = program;
+
+  // Initialize VAO
+  const aVertexPosition = context.initQuad();
+  const vao = constructVao({ attributes: { aVertexPosition } });
+
+  return {
+    canvas: context.gl.canvas,
+    draw,
+    setPixelRatio: (ratio) => { params.getPixelRatio = () => ratio; },
+    destroy: () => context.gl.canvas.remove(),
   };
 
-  function addChild(tagName, className, parentElement) {
-    const child = document.createElement(tagName);
-    child.className = className;
-    return parentElement.appendChild(child);
+  function draw(camPos, maxRayTan) {
+    program.use();
+
+    // Set uniforms related to camera position
+    const lat = camPos[1] / unitsPerRad;
+    setters.uLat0(lat);
+    setters.uCosLat0(cos(lat));
+    setters.uSinLat0(sin(lat));
+    setters.uTanLat0(tan(lat));
+
+    const clipLat = min(max(-maxMercLat, lat), maxMercLat);
+    setters.uLatErr(lat - clipLat);
+    setters.uExpY0(tan(PI / 4 + clipLat / 2));
+
+    setters.uHnorm(camPos[2] / globeRadius);
+    setters.uMaxRay(maxRayTan);
+
+    setters.uCamMapPos(maps.flatMap(m => [m.camPos[0], 1.0 - m.camPos[1]]));
+    setters.uMapScales(maps.flatMap(m => Array.from(m.scale)));
+    setters.uTextureSampler(maps.map(m => m.sampler));
+
+    // Draw the globe
+    const resized = context.resizeCanvasToDisplaySize(params.getPixelRatio());
+    context.bindFramebufferAndSetViewport();
+    context.gl.pixelStorei(context.gl.UNPACK_FLIP_Y_WEBGL, params.flipY);
+    context.clear();
+    context.draw({ vao });
+
+    return resized;
   }
 }
 
-function fail$3(message) {
-  throw Error("GlobeletJS: " + message);
+function initReprojection(ball, context, sampler) {
+  const camPos = new Float64Array([0.5, 0.5]);
+  const scale = new Float64Array(2);
+
+  const satView = init$5({
+    context,
+    map: { sampler, camPos, scale },
+    globeRadius: ball.radius(),
+    flipY: false,
+    units: "degrees",
+  });
+
+  function reproject(map, satellitePos) {
+    scale.set(map.getScale());
+    camPos.set(map.getCamPos());
+    context.updateMips(sampler);
+    satView.draw(satellitePos, ball.view.maxRay);
+  }
+
+  return { reproject, destroy: satView.destroy };
 }
 
 const { cos, tan, atan, exp, log, PI, min, max } = Math;
@@ -1507,7 +1840,7 @@ function initGLpaint(userParams) {
   return { prep, loadBuffers, loadAtlas, loadSprite, initPainter };
 }
 
-function setParams$1$1(userParams) {
+function setParams$1(userParams) {
   const gl = userParams.context.gl;
   if (!(gl instanceof WebGL2RenderingContext)) fail$1("no valid WebGL context");
 
@@ -2643,7 +2976,7 @@ function initZeroTimeouts() {
   };
 }
 
-function init$1$1() {
+function init$1() {
   const tasks = [];
   let taskId = 0;
   let queueIsRunning = false;
@@ -2703,7 +3036,7 @@ function init$1$1() {
 function setParams$3(userParams) {
   const {
     context, threads = 2,
-    queue = init$1$1(),
+    queue = init$1(),
     source, glyphs, layers, spriteData,
   } = userParams;
 
@@ -7758,8 +8091,8 @@ function triangulate(geometry) {
     case "MultiPolygon":
       return coordinates.map(indexPolygon).reduce((acc, cur) => {
         const indexShift = acc.position.length / 2;
-        acc.position.push(...cur.position);
-        acc.indices.push(...cur.indices.map(h => h + indexShift));
+        cur.position.forEach(c => acc.position.push(c));
+        cur.indices.map(h => h + indexShift).forEach(c => acc.indices.push(c));
         return acc;
       });
     default:
@@ -9315,7 +9648,7 @@ function distToPoint(coords, pt) {
 }
 
 function init$4(userParams) {
-  const params = setParams$1$1(userParams);
+  const params = setParams$1(userParams);
 
   // Set up dummy API
   const api = {
@@ -9366,53 +9699,49 @@ function setup$2(styleDoc, params, api) {
   return api;
 }
 
-function initMap(params) {
-  const { context, width, height, style, mapboxToken } = params;
+function initMap(ball, params) {
+  const { width, height, style, mapboxToken, globeDiv } = params;
+
+  const canvas = globeDiv.appendChild(newElement("canvas", "map"));
+  const context = initContext(canvas);
+
   const framebuffer = context.initFramebuffer({ width, height });
+  const renderer = initReprojection(ball, context, framebuffer.sampler);
 
   return init$4({ context, framebuffer, style, mapboxToken, projScale: true })
-    .promise.then(api => setup$1(api, context, framebuffer.sampler));
+    .promise.then(map => setup$1(map, ball, renderer));
 }
 
-function setup$1(api, context, sampler) {
+function setup$1(map, ball, renderer) {
   let loadStatus = 0;
 
-  const texture = {
-    sampler,
-    camPos: new Float64Array([0.5, 0.5]),
-    scale: new Float64Array(2),
-  };
-
   return {
-    texture,
-    loaded: () => loadStatus,
-    draw,
+    mapLoaded: () => loadStatus,
     select,
-    showLayer: (l) => (loadStatus = 0, api.showLayer(l)),
-    hideLayer: (l) => (loadStatus = 0, api.hideLayer(l)),
-    getZoom: api.getZoom,
+    showLayer: (l) => (loadStatus = 0, map.showLayer(l)),
+    hideLayer: (l) => (loadStatus = 0, map.hideLayer(l)),
+    getZoom: map.getZoom,
+    destroy: renderer.destroy,
+    update,
   };
 
-  function draw(camPos, radius, view) {
-    const dMap = camPos[2] / radius *        // Normalize to radius = 1
-      view.topEdge() * 2 / view.height() * // ray tangent per pixel
-      api.projection.scale(camPos);
+  function update(satellitePos) {
+    const hNorm = satellitePos[2] / ball.radius();
+    const rayTanPerPixel = ball.view.topEdge() * 2 / ball.view.height();
+    const dMap = hNorm * rayTanPerPixel * map.projection.scale(satellitePos);
 
     const k = 1.0 / dMap;
     const zoom = Math.log2(k) - 9;
 
-    api.setCenterZoom(camPos, zoom);
-    const dzScale = 2 ** (zoom - api.getZoom());
-    loadStatus = api.draw({ dzScale });
+    map.setCenterZoom(satellitePos, zoom);
+    const dzScale = 2 ** (zoom - map.getZoom());
+    loadStatus = map.draw({ dzScale });
 
-    texture.scale.set(api.getScale());
-    texture.camPos.set(api.getCamPos());
-
-    context.updateMips(sampler);
+    renderer.reproject(map, satellitePos);
   }
 
-  function select(layer, point, radius) {
-    return api.select({ layer, point, radius });
+  function select(layer, radius) {
+    return map.select({ layer, point: ball.cursorPos(), radius });
   }
 }
 
@@ -9879,27 +10208,28 @@ function initEllipsoid() {
   }
 }
 
-function checkCoords(p, n) {
-  const isArray = Array.isArray(p) ||
-    (ArrayBuffer.isView(p) && !(p instanceof DataView));
-  return isArray && p.length >= n &&
-    p.slice(0, n).every(Number.isFinite);
-}
-
 function getUnitConversion(units) {
   // Internally, spinning-ball assumes geodetic coordinates in these units:
   //   [longitude (radians), latitude (radians), altitude (kilometers)]
   // Externally, the user may want longitude and latitude in degrees.
   // Construct the functions that convert user inputs to internal coordinates,
   // and invert internal coordinates to the user's units
-  const uPerRad = (units === "degrees")
-    ? 180.0 / Math.PI
-    : 1.0;
+  const maxLon = (units === "degrees") ? 180.0 : Math.PI;
+  const maxLat = maxLon / 2;
+  const uPerRad = maxLon / Math.PI;
 
   return {
-    convert: c => new Float64Array([c[0] / uPerRad, c[1] / uPerRad, c[2]]),
-    invert: c => new Float64Array([c[0] * uPerRad, c[1] * uPerRad, c[2]]),
+    maxLon, maxLat,
+    convert: (c) => new Float64Array([c[0] / uPerRad, c[1] / uPerRad, c[2]]),
+    invert: (c) => new Float64Array([c[0] * uPerRad, c[1] * uPerRad, c[2]]),
   };
+}
+
+function checkCoords(p, n) {
+  const isArray = Array.isArray(p) ||
+    (ArrayBuffer.isView(p) && !(p instanceof DataView));
+  return isArray && p.length >= n &&
+    p.slice(0, n).every(Number.isFinite);
 }
 
 function wrapLongitude(lon) {
@@ -9908,52 +10238,92 @@ function wrapLongitude(lon) {
   return lon - period * 2 * PI;
 }
 
-function setParams$1(params) {
-  const { PI } = Math;
+function initBounds([minLon, minLat, minAlt], [maxLon, maxLat, maxAlt]) {
+  const { min, max, PI } = Math;
 
+  const hWidth = (minLon < maxLon)
+    ? (maxLon - minLon) / 2
+    : (maxLon - minLon) / 2 + PI;
+
+  const centerLon = minLon + hWidth;
+
+  return { check, apply };
+
+  function check([lon, lat, alt]) {
+    const dLon = wrapLongitude(lon - centerLon);
+    if (dLon < -hWidth || hWidth < dLon) return false;
+    if (lat < minLat || maxLat < lat) return false;
+    if (alt < minAlt || maxAlt < alt) return false;
+    return true;
+  }
+
+  function apply([lon, lat, alt]) {
+    const dLon = wrapLongitude(lon - centerLon);
+    const limdlon = min(max(-hWidth, dLon), hWidth);
+    const clipLon = wrapLongitude(centerLon + limdlon);
+
+    const clipLat = min(max(minLat, lat), maxLat);
+    const clipAlt = min(max(minAlt, alt), maxAlt);
+
+    return [clipLon, clipLat, clipAlt];
+  }
+}
+
+function setParams(params) {
   // TODO: Get user-supplied semiMinor & semiMajor axes?
   const ellipsoid = initEllipsoid();
 
+  const { units: userUnits = "degrees" } = params;
+  if (!["degrees", "radians"].includes(userUnits)) {
+    fail("units must be either degrees or radians");
+  }
+  const units = getUnitConversion(userUnits);
+
   const {
     display,
-    units: userUnits = "degrees",
     position = [0.0, 0.0, ellipsoid.meanRadius * 4.0],
-    minHeight = ellipsoid.meanRadius() * 0.00001,
-    maxHeight = ellipsoid.meanRadius() * 8.0,
+    minAltitude: minAlt = ellipsoid.meanRadius() * 0.00001,
+    maxAltitude: maxAlt = ellipsoid.meanRadius() * 8.0,
+    minLongitude: minLon = -units.maxLon,
+    maxLongitude: maxLon = units.maxLon,
+    minLatitude: minLat = -units.maxLat,
+    maxLatitude: maxLat = units.maxLat,
   } = params;
 
   if (!(display instanceof Element)) fail("missing display element");
 
-  if (!["degrees", "radians"].includes(userUnits)) fail("invalid units");
-  const units = getUnitConversion(userUnits);
+  check(minAlt, 0, ellipsoid.meanRadius() * 100000.0, "minAltitude");
+  check(maxAlt, 0, ellipsoid.meanRadius() * 100000.0, "maxAltitude");
+  if (minAlt > maxAlt) fail("minAltitude must be <= maxAltitude");
 
-  // minHeight, maxHeight must be Numbers, positive and not too big
-  const heights = [minHeight, maxHeight];
-  if (!heights.every(h => Number.isFinite(h) && h > 0)) {
-    fail("minHeight, maxHeight must be Numbers > 0");
-  } else if (heights.some(h => h > ellipsoid.meanRadius() * 100000.0)) {
-    fail("minHeight, maxHeight must be somewhere below Jupiter");
-  }
+  check(minLon, -units.maxLon, units.maxLon, "minLongitude");
+  check(maxLon, -units.maxLon, units.maxLon, "maxLongitude");
+  check(minLat, -units.maxLat, units.maxLat, "minLatitude");
+  check(maxLat, -units.maxLat, units.maxLat, "maxLatitude");
+  if (minLat > maxLat) fail("minLatitude must be <= maxLatitude");
 
-  // initialPosition must be a valid coordinate in the given units
-  if (!checkCoords(position, 3)) fail("invalid center array");
+  const b1 = units.convert([minLon, minLat, minAlt]);
+  const b2 = units.convert([maxLon, maxLat, maxAlt]);
+  const bounds = initBounds(b1, b2);
+
+  if (!checkCoords(position, 3)) fail("position must be an Array of 3 numbers");
   const initialPosition = units.convert(position);
-  const [lon, lat, alt] = initialPosition;
-  const outOfRange =
-    lon < -PI || lon > PI ||
-    lat < -PI / 2 || lat > PI / 2 ||
-    alt < minHeight || alt > maxHeight;
-  if (outOfRange) fail ("initial position out of range");
+  if (!bounds.check(initialPosition)) fail ("initial position out of range");
 
   return {
-    ellipsoid, display, units, initialPosition, minHeight, maxHeight,
+    ellipsoid, display, units, initialPosition, bounds, minAlt, maxAlt,
     view: initView(display, 25.0), // Computes ray params at point on display
   };
 }
 
+function check(c, lb, ub, name) {
+  if (Number.isFinite(c) && (lb <= c) && (c <= ub)) return true;
+  fail(name + " must be a Number between " + lb + " and " + ub);
+}
+
 function fail(message) {
   // TODO: Should some errors be RangeErrors or TypeErrors instead?
-  throw Error("spinning-ball: " + message);
+  throw Error("spinning-ball parameters check: " + message);
 }
 
 /**
@@ -10125,7 +10495,6 @@ function initECEF(ellipsoid, initialPos) {
   // coordinates and a rotation matrix
   // These are suitable for rendering Relative To Eye (RTE), as described in
   // P Cozzi, 3D Engine Design for Virtual Globes, www.virtualglobebook.com
-  const { min, max, PI } = Math;
   const position = new Float64Array([0.0, 0.0, 0.0, 1.0]);
   const rotation = create$1();  // Note: single precision!! (Float32Array)
   const inverse  = create$1();
@@ -10140,10 +10509,6 @@ function initECEF(ellipsoid, initialPos) {
   };
 
   function update(geodetic) {
-    // Wrap longitude, clip latitude
-    geodetic[0] = wrapLongitude(geodetic[0]);
-    geodetic[1] = min(max(-PI / 2.0, geodetic[1]), PI / 2.0);
-
     // Compute ECEF coordinates. NOTE WebGL coordinate convention:
     // +x to right, +y to top of screen, and +z into the screen
     ellipsoid.geodetic2ecef(position, geodetic);
@@ -10162,7 +10527,7 @@ function initECEF(ellipsoid, initialPos) {
 }
 
 function initCamera(params) {
-  const { view, ellipsoid, initialPosition } = params;
+  const { view, ellipsoid, bounds, initialPosition } = params;
   const rayVec = new Float64Array(3);
   const ecefTmp = new Float64Array(3);
 
@@ -10183,7 +10548,8 @@ function initCamera(params) {
 
   function update(dPos) {
     if (dPos.every(c => c == 0.0)) return;
-    position.set(position.map((c, i) => c + dPos[i]));
+    const newPos = position.map((c, i) => c + dPos[i]);
+    position.set(bounds.apply(newPos));
     ecef.update(position);
   }
 
@@ -10556,7 +10922,7 @@ function initCursor2d(params, camera) {
 }
 
 function initCursor3d(params, camera) {
-  const { initialPosition, minHeight, maxHeight } = params;
+  const { initialPosition, minAlt, maxAlt } = params;
 
   const cursor2d = initCursor2d(params, camera);
 
@@ -10566,7 +10932,7 @@ function initCursor3d(params, camera) {
   const zoomPosition = new Float64Array(3);
   // Track target screen ray and altitude for zooming
   const zoomRay = new Float64Array([0.0, 0.0, -1.0, 0.0]);
-  let targetHeight = initialPosition[2];
+  let targetAlt = initialPosition[2];
 
   // Flags about the cursor state
   let onScene = false;
@@ -10590,7 +10956,7 @@ function initCursor3d(params, camera) {
     wasTapped: () => wasTapped,
     isZooming: () => zooming,
     zoomFixed: () => zoomFix,
-    zoomTarget: () => targetHeight,
+    zoomTarget: () => targetAlt,
 
     // Functions to update local state
     update,
@@ -10625,16 +10991,16 @@ function initCursor3d(params, camera) {
 
     if (cursor2d.zoomed()) {
       zooming = true;
-      targetHeight *= cursor2d.zscale();
-      targetHeight = Math.min(Math.max(minHeight, targetHeight), maxHeight);
+      targetAlt *= cursor2d.zscale();
+      targetAlt = Math.min(Math.max(minAlt, targetAlt), maxAlt);
     }
 
     cursor2d.reset();
   }
 
-  function stopZoom(height) {
+  function stopZoom(alt) {
     zooming = zoomFix = false;
-    if (height !== undefined) targetHeight = height;
+    if (alt !== undefined) targetAlt = alt;
   }
 }
 
@@ -10707,10 +11073,10 @@ function initZoom(ellipsoid, cursor3d) {
     const [dz, dVz] = oscillatorChange(stretch, velocity[2], dt, w0);
     velocity[2] += dVz;
 
-    // Scale rotational velocity by the ratio of the height change
-    const heightScale = 1.0 + dz / position[2];
-    velocity[0] *= heightScale;
-    velocity[1] *= heightScale;
+    // Scale rotational velocity by the ratio of the altitude change
+    const altScale = 1.0 + dz / position[2];
+    velocity[0] *= altScale;
+    velocity[1] *= altScale;
 
     const dPos = new Float64Array([0.0, 0.0, dz]);
     const centerDist = position[2] + dz + ellipsoid.meanRadius();
@@ -10839,8 +11205,8 @@ function initCameraDynamics(ellipsoid, camera, cursor3d) {
   }
 }
 
-function init$1(userParams) {
-  const params = setParams$1(userParams);
+function init(userParams) {
+  const params = setParams(userParams);
   const { ellipsoid, view, units } = params;
 
   const camera = initCamera(params);
@@ -10877,320 +11243,21 @@ function init$1(userParams) {
   }
 }
 
-function setParams(userParams) {
-  const {
-    context,
-    pixelRatio,
-    globeRadius = 6371,
-    map,
-    flipY = false,
-    units = "radians",
-  } = userParams;
+function initToolTip(ball, globeDiv) {
+  const toolTip = globeDiv.appendChild(newElement("div", "status"));
 
-  if (!context || !(context.gl instanceof WebGL2RenderingContext)) {
-    throw "satellite-view: no valid WebGL2RenderingContext!";
+  function update() {
+    // Print altitude and lon/lat of camera
+    const cameraPos = ball.cameraPos();
+    const alt = cameraPos[2].toPrecision(5);
+    toolTip.innerHTML = alt + "km " + lonLatString(...cameraPos);
+
+    if (ball.isOnScene()) {
+      toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos());
+    }
   }
 
-  const getPixelRatio = (pixelRatio)
-    ? () => userParams.pixelRatio
-    : () => window.devicePixelRatio;
-  // NOTE: getPixelRatio() returns the result of an object getter,
-  //       NOT the property value at the time of getPixelRatio definition
-  //  Thus, getPixelRatio will mirror any changes in the parent object
-
-  const maps = Array.isArray(map) ? map : [map];
-
-  const unitsPerRad = (units === "degrees")
-    ? 180.0 / Math.PI
-    : 1.0;
-
-  return { context, getPixelRatio, globeRadius, maps, flipY, unitsPerRad };
-}
-
-var vertexSrc = `#version 300 es
-
-in vec4 aVertexPosition;
-
-uniform vec2 uMaxRay;
-
-out highp vec2 vRayParm;
-
-void main(void) {
-  vRayParm = uMaxRay * aVertexPosition.xy;
-  gl_Position = aVertexPosition;
-}
-`;
-
-var invertSrc = `uniform float uLat0;
-uniform float uCosLat0;
-uniform float uSinLat0;
-uniform float uTanLat0;
-
-float latChange(float x, float y, float sinC, float cosC) {
-  float xtan = x * uTanLat0;
-  float curveTerm = 0.5 * y * (xtan * xtan - y * y / 3.0);
-
-  return (max(sinC, abs(sinC * uTanLat0) ) < 0.1)
-    ? sinC * (y - sinC * (0.5 * xtan * x + curveTerm * sinC))
-    : asin(uSinLat0 * cosC + y * uCosLat0 * sinC) - uLat0;
-}
-
-vec2 xyToLonLat(vec2 xy, float sinC, float cosC) {
-  vec2 pHat = normalize(xy);
-  float dLon = atan(pHat.x * sinC,
-      uCosLat0 * cosC - pHat.y * uSinLat0 * sinC);
-  float dLat = latChange(pHat.x, pHat.y, sinC, cosC);
-  return vec2(dLon, dLat);
-}
-`;
-
-var projectSrc = `const float ONEOVERTWOPI = 0.15915493667125702;
-
-uniform float uExpY0;
-uniform float uLatErr; // Difference of clipping to map limit
-
-float smallTan(float x) {
-  return (abs(x) < 0.1)
-    ? x * (1.0 + x * x / 3.0)
-    : tan(x);
-}
-
-float log1plusX(float x) {
-  return (abs(x) < 0.15)
-    ? x * (1.0 - x * (0.5 - x / 3.0 + x * x / 4.0))
-    : log( 1.0 + max(x, -0.999) );
-}
-
-vec2 projMercator(vec2 dLonLat) {
-  float tandlat = smallTan( 0.5 * (dLonLat[1] + uLatErr) );
-  float p = tandlat * uExpY0;
-  float q = tandlat / uExpY0;
-  return vec2(dLonLat[0], log1plusX(q) - log1plusX(-p)) * ONEOVERTWOPI;
-}
-`;
-
-function glslInterp(strings, ...expressions) {
-  return strings.reduce( (acc, val, i) => acc + expressions[i-1]() + val );
-}
-var texLookup = (args) => glslInterp`const int nLod = ${args.nLod};
-
-uniform sampler2D uTextureSampler[nLod];
-uniform vec2 uCamMapPos[nLod];
-uniform vec2 uMapScales[nLod];
-
-float dateline(float x1) {
-  // Choose the correct texture coordinate in fragments crossing the
-  // antimeridian of a cylindrical coordinate system
-  // See http://vcg.isti.cnr.it/~tarini/no-seams/
-
-  // Alternate coordinate: forced across the antimeridian
-  float x2 = fract(x1 + 0.5) - 0.5;
-  // Choose the coordinate with the smaller screen-space derivative
-  return (fwidth(x1) < fwidth(x2) + 0.001) ? x1 : x2;
-}
-
-bool inside(vec2 pos) {
-  // Check if the supplied texture coordinate falls inside [0,1] X [0,1]
-  // We adjust the limits slightly to ensure we are 1 pixel away from the edges
-  return (
-      0.001 < pos.x && pos.x < 0.999 &&
-      0.001 < pos.y && pos.y < 0.999 );
-}
-
-vec4 sampleLOD(sampler2D samplers[nLod], vec2 coords[nLod]) {
-  return ${args.buildSelector}texture(samplers[0], coords[0]);
-}
-
-vec4 texLookup(vec2 dMerc) {
-  vec2 texCoords[nLod];
-
-  for (int i = 0; i < nLod; i++) {
-    texCoords[i] = uCamMapPos[i] + uMapScales[i] * dMerc;
-    texCoords[i].x = dateline(texCoords[i].x);
-  }
-
-  return sampleLOD(uTextureSampler, texCoords);
-}
-`;
-
-var dither2x2 = `float threshold(float val, float limit) {
-  float decimal = fract(255.0 * val);
-  float dithered = (decimal < limit)
-    ? 0.0
-    : 1.0;
-  float adjustment = (dithered - decimal) / 255.0;
-  return val + adjustment;
-}
-
-vec3 dither2x2(vec2 position, vec3 color) {
-  // Based on https://github.com/hughsk/glsl-dither/blob/master/2x2.glsl
-  int x = int( mod(position.x, 2.0) );
-  int y = int( mod(position.y, 2.0) );
-  int index = x + y * 2;
-
-  float limit = 0.0;
-  if (index == 0) limit = 0.25;
-  if (index == 1) limit = 0.75;
-  if (index == 2) limit = 1.00;
-  if (index == 3) limit = 0.50;
-
-  // Use limit to toggle color between adjacent 8-bit values
-  return vec3(
-      threshold(color.r, limit),
-      threshold(color.g, limit),
-      threshold(color.b, limit)
-      );
-}
-`;
-
-var fragMain = `float diffSqrt(float x) {
-  // Returns 1 - sqrt(1-x), with special handling for small x
-  float halfx = 0.5 * x;
-  return (x < 0.1)
-    ? halfx * (1.0 + 0.5 * halfx * (1.0 + halfx))
-    : 1.0 - sqrt(1.0 - x);
-}
-
-float horizonTaper(float gamma) {
-  // sqrt(gamma) = tan(ray_angle) / tan(horizon)
-  float horizonRatio = sqrt(gamma);
-  float delta = 2.0 * fwidth(horizonRatio);
-  return 1.0 - smoothstep(1.0 - delta, 1.0, horizonRatio);
-}
-
-in vec2 vRayParm;
-uniform float uHnorm;
-out vec4 pixColor;
-
-void main(void) {
-  // 0. Pre-compute some values
-  float p = length(vRayParm); // Tangent of ray angle
-  float p2 = p * p;
-  float gamma = p2 * uHnorm * (2.0 + uHnorm);
-  float sinC = (uHnorm + diffSqrt(gamma)) * p / (1.0 + p2);
-  float cosC = sqrt(1.0 - sinC * sinC);
-
-  // 1. Invert for longitude and latitude perturbations relative to camera
-  vec2 dLonLat = xyToLonLat(vRayParm, sinC, cosC);
-
-  // 2. Project to a change in the Mercator coordinates
-  vec2 dMerc = projMercator(dLonLat);
-
-  // 3. Lookup color from the appropriate texture
-  vec4 texelColor = texLookup(dMerc);
-
-  // Add cosine shading, dithering, and horizon tapering
-  vec3 dithered = dither2x2(gl_FragCoord.xy, cosC * texelColor.rgb);
-  pixColor = vec4(dithered.rgb, texelColor.a) * horizonTaper(gamma);
-}
-`;
-
-const header = `#version 300 es
-precision highp float;
-precision highp sampler2D;
-
-`;
-
-function buildShader(nLod) {
-  // Input nLod is the number of 'levels of detail' supplied
-  // in the set of multi-resolution maps
-  nLod = Math.max(1, Math.floor(nLod));
-
-  // Execute the 'tagged template literal' added to texLookup.js.glsl by
-  // ../../build/glsl-plugin.js. This will substitute nLod-dependent code
-  const args = { // Properties MUST match ./texLookup.js.glsl
-    nLod: () => nLod,
-    buildSelector: () => buildSelector(nLod),
-  };
-  const texLookupSrc = texLookup(args);
-
-  // Combine the GLSL-snippets into one shader source
-  const fragmentSrc = header + invertSrc + projectSrc +
-    texLookupSrc + dither2x2 + fragMain;
-
-  return {
-    vert: vertexSrc,
-    frag: fragmentSrc,
-  };
-}
-
-function buildSelector(n) {
-  // In the texLookup code, add lines to check each of the supplied textures,
-  // and sample the highest LOD that contains the current coordinate
-  let selector = ``; // eslint-disable-line quotes
-  while (--n) selector += `inside(coords[${n}])
-    ? texture(samplers[${n}], coords[${n}])
-    : `;
-  return selector;
-}
-
-function init(userParams) {
-  const { PI, cos, sin, tan, atan, exp, min, max } = Math;
-  const maxMercLat = 2.0 * atan(exp(PI)) - PI / 2.0;
-
-  const params = setParams(userParams);
-  const { context, maps, globeRadius, unitsPerRad } = params;
-
-  // Initialize shader program
-  const shaders = buildShader(maps.length);
-  const program = context.initProgram(shaders.vert, shaders.frag);
-  const { uniformSetters: setters, constructVao } = program;
-
-  // Initialize VAO
-  const aVertexPosition = context.initQuad();
-  const vao = constructVao({ attributes: { aVertexPosition } });
-
-  return {
-    canvas: context.gl.canvas,
-    draw,
-    setPixelRatio: (ratio) => { params.getPixelRatio = () => ratio; },
-    destroy: () => context.gl.canvas.remove(),
-  };
-
-  function draw(camPos, maxRayTan) {
-    program.use();
-
-    // Set uniforms related to camera position
-    const lat = camPos[1] / unitsPerRad;
-    setters.uLat0(lat);
-    setters.uCosLat0(cos(lat));
-    setters.uSinLat0(sin(lat));
-    setters.uTanLat0(tan(lat));
-
-    const clipLat = min(max(-maxMercLat, lat), maxMercLat);
-    setters.uLatErr(lat - clipLat);
-    setters.uExpY0(tan(PI / 4 + clipLat / 2));
-
-    setters.uHnorm(camPos[2] / globeRadius);
-    setters.uMaxRay(maxRayTan);
-
-    setters.uCamMapPos(maps.flatMap(m => [m.camPos[0], 1.0 - m.camPos[1]]));
-    setters.uMapScales(maps.flatMap(m => Array.from(m.scale)));
-    setters.uTextureSampler(maps.map(m => m.sampler));
-
-    // Draw the globe
-    const resized = context.resizeCanvasToDisplaySize(params.getPixelRatio());
-    context.bindFramebufferAndSetViewport();
-    context.gl.pixelStorei(context.gl.UNPACK_FLIP_Y_WEBGL, params.flipY);
-    context.clear();
-    context.draw({ vao });
-
-    return resized;
-  }
-}
-
-function printToolTip(toolTip, ball) {
-  // Input toolTip is an HTML element where positions will be printed
-  if (!toolTip) return;
-
-  // Print altitude and lon/lat of camera
-  const cameraPos = ball.cameraPos();
-  const alt = cameraPos[2].toPrecision(5);
-  toolTip.innerHTML = alt + "km " + lonLatString(...cameraPos);
-
-  if (ball.isOnScene()) {
-    toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos());
-  }
+  return { update };
 }
 
 function lonLatString(longitude, latitude) {
@@ -11230,12 +11297,10 @@ function initMarkers(globe, container) {
   function add({ element, type, position }) {
     const [lon, lat, alt = 0.0] = position;
     const marker = {
-      element: getMarkerElement(element, type),
+      element: container.appendChild(getMarkerElement(element, type)),
       position: new Float64Array([lon, lat, alt]),
       screenPos: new Float64Array(2),
     };
-
-    container.appendChild(marker.element);
     setPosition(marker);
 
     // Add to the list, and return the pointer to the user
@@ -11244,22 +11309,15 @@ function initMarkers(globe, container) {
   }
 
   function getMarkerElement(element, type) {
-    return (element && ["DIV", "IMG", "SVG"].includes(element.nodeName))
+    const validNodeNames = ["DIV", "div", "IMG", "img", "SVG", "svg"];
+    return (element && validNodeNames.includes(element.nodeName))
       ? element
       : createSVG(type);
   }
 
   function createSVG(type = "marker") {
-    const svgNS = "http://www.w3.org/2000/svg";
-
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("class", type);
-
-    const use = document.createElementNS(svgNS, "use");
-    // Reference the relevant sprite from the SVG appended in params.js
-    use.setAttribute("href", "#" + type);
-    svg.appendChild(use);
-
+    const svg = newSVG("svg", { "class": type });
+    svg.appendChild(newSVG("use", { "href": "#" + type }));
     return svg;
   }
 
@@ -11283,37 +11341,66 @@ function initMarkers(globe, container) {
   }
 }
 
-function initGlobe(userParams) {
-  const params = setParams$4(userParams);
+function initInfoBox(globeDiv, infoDiv) {
+  const nullFn = () => null;
+  if (!infoDiv) return { showInfo: nullFn, hideInfo: nullFn, destroy: nullFn };
 
-  return initMap(params)
-    .then(map => setup(map, params));
+  // Construct a slider div, with coords div and close button in a top bar
+  const infoSlider = newElement("div", "infoslider");
+  globeDiv.parentNode.appendChild(infoSlider);
+  const topBar = infoSlider.appendChild(newElement("div", "infoTopBar"));
+  const coords = topBar.appendChild(newElement("span"));
+  const infoCloseButton = topBar.appendChild(newElement("button"));
+  infoCloseButton.appendChild(newSVG("svg", { "class": "icon stroke" }))
+    .appendChild(newSVG("use", { "href": "#close" }));
+  infoCloseButton.addEventListener("click", hideInfo);
+
+  // Store original position of info div, then wrap it inside the slider div
+  const { parentNode, nextSibling } = infoDiv;
+  infoSlider.appendChild(infoDiv);
+  infoDiv.classList.add("infobox");
+
+  return { showInfo, hideInfo, infoCloseButton, destroy };
+
+  function showInfo([lon, lat]) {
+    coords.innerHTML = lon.toFixed(4) + " " + lat.toFixed(4);
+    infoSlider.classList.add("slid");
+    globeDiv.classList.add("shifted");
+  }
+
+  function hideInfo() {
+    infoSlider.classList.remove("slid");
+    globeDiv.classList.remove("shifted");
+  }
+
+  function destroy() {
+    // Restore info div to original position
+    if (nextSibling) {
+      parentNode.insertBefore(infoDiv, nextSibling);
+    } else {
+      parentNode.appendChild(infoDiv);
+    }
+    infoSlider.remove();
+  }
 }
 
-function setup(map, params) {
-  const { globeDiv, toolTip, center, altitude, context } = params;
+function initGlobe(userParams) {
+  const params = setParams$5(userParams);
+  const { ballParams, globeDiv, infoDiv } = params;
+
+  const ball = init(ballParams);
+
+  return initMap(ball, params)
+    .then(map => setup(map, ball, globeDiv, infoDiv));
+}
+
+function setup(map, ball, globeDiv, infoDiv) {
   let requestID;
-
-  const ball = init$1({
-    display: globeDiv,
-    position: [center[0], center[1], altitude],
-  });
-  const satView = init({
-    context: context,
-    globeRadius: ball.radius(),
-    map: map.texture,
-    flipY: false,
-    units: "degrees",
-  });
   const markers = initMarkers(ball, globeDiv);
+  const toolTip = initToolTip(ball, globeDiv);
+  const infoBox = initInfoBox(globeDiv, infoDiv);
 
-  return {
-    mapLoaded: map.loaded,
-    select: (layer, dxy) => map.select(layer, ball.cursorPos(), dxy),
-    showLayer: map.showLayer,
-    hideLayer: map.hideLayer,
-    getZoom: map.getZoom,
-
+  return Object.assign({}, map, infoBox, {
     startAnimation: () => { requestID = requestAnimationFrame(animate); },
     stopAnimation: () => cancelAnimationFrame(requestID),
     update,  // For requestAnimationFrame loops managed by the parent program
@@ -11326,10 +11413,8 @@ function setup(map, params) {
     addMarker: markers.add,
     removeMarker: markers.remove,
 
-    destroy: () => (satView.destroy(), globeDiv.remove()),
-    breakLoop: 0,
-    version: params.version,
-  };
+    destroy: () => (map.destroy(), infoBox.destroy(), globeDiv.remove()),
+  });
 
   function animate(time) {
     update(time);
@@ -11339,13 +11424,9 @@ function setup(map, params) {
   function update(time) {
     const moving = ball.update(time * 0.001); // Convert time from ms to seconds
 
-    if (moving || map.loaded() < 1.0) {
-      map.draw(ball.cameraPos(), ball.radius(), ball.view);
-      satView.draw(ball.cameraPos(), ball.view.maxRay);
-    }
-
+    if (moving || map.mapLoaded() < 1.0) map.update(ball.cameraPos());
     if (moving) markers.update();
-    if (ball.cursorChanged()) printToolTip(toolTip, ball);
+    if (ball.cursorChanged()) toolTip.update();
   }
 }
 
