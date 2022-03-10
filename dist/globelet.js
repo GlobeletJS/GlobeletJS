@@ -11251,10 +11251,6 @@ function initToolTip(ball, globeDiv) {
     const cameraPos = ball.cameraPos();
     const alt = cameraPos[2].toPrecision(5);
     toolTip.innerHTML = alt + "km " + lonLatString(...cameraPos);
-
-    if (ball.isOnScene()) {
-      toolTip.innerHTML += "<br> Cursor: " + lonLatString(...ball.cursorPos());
-    }
   }
 
   return { update };
