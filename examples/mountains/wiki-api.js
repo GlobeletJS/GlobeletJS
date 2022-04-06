@@ -22,10 +22,23 @@ export function getWikiData(wikidataid) {
 function parseEntityData(data) {
   const { labels, descriptions, claims, sitelinks } = data;
 
-  const label = labels?.en?.value;
-  const description = descriptions?.en?.value;
-  const imagefile = claims?.P18?.[0]?.mainsnak?.datavalue?.value;
-  const sitelink = sitelinks?.enwiki?.url;
+  // All of these would be better done with optional chaining,
+  // but we do it clumsily to make sure we can run on old Androids
+  const label = (labels && labels.en)
+    ? labels.en.value
+    : undefined;
+  const description = (descriptions && descriptions.en)
+    ? descriptions.en.value
+    : undefined;
+  const mainsnak = (claims && claims.P18 && claims.P18[0])
+    ? claims.P18[0].mainsnak
+    : undefined;
+  const imagefile = (mainsnak && mainsnak.datavalue)
+    ? mainsnak.datavalue.value
+    : undefined;
+  const sitelink = (sitelinks && sitelinks.enwiki)
+    ? sitelinks.enwiki.url
+    : undefined;
 
   const image = (imagefile && imagefile.length)
     ? '<img src="' + getImageSrc(imagefile) + '">'

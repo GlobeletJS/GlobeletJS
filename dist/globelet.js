@@ -170,8 +170,9 @@ function createUniformSetter(gl, program, info, textureUnit) {
   }
 
   function buildTextureSetter(bindPoint) {
+    gl.uniform1i(loc, textureUnit);
+
     return function(texture) {
-      gl.uniform1i(loc, textureUnit);
       gl.activeTexture(gl.TEXTURE0 + textureUnit);
       gl.bindTexture(bindPoint, texture);
     };
@@ -179,8 +180,9 @@ function createUniformSetter(gl, program, info, textureUnit) {
 
   function buildTextureArraySetter(bindPoint) {
     const units = Array.from(Array(size), () => textureUnit++);
+    gl.uniform1iv(loc, units);
+
     return function(textures) {
-      gl.uniform1iv(loc, units);
       textures.forEach((texture, i) => {
         gl.activeTexture(gl.TEXTURE0 + units[i]);
         gl.bindTexture(bindPoint, texture);
@@ -197,7 +199,10 @@ function createUniformSetters(gl, program) {
     .filter(info => info !== undefined);
 
   const textureTypes = [gl.SAMPLER_2D, gl.SAMPLER_CUBE];
-  let textureUnit = 0;
+  let textureUnit = 1; // Skip the first texture unit: used for initTexture
+
+  // Make sure program is active, in case we need to set texture units
+  gl.useProgram(program);
 
   return uniformInfo.reduce((d, info) => {
     const { name, type, size } = info;
@@ -213,27 +218,27 @@ function createUniformSetters(gl, program) {
 }
 
 function initAttributes(gl, program) {
-  // Construct a dictionary of the indices of each attribute used by program
+  // Construct a dictionary of the locations of each attribute in the program
   const attrIndices = Array
     .from({ length: gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) })
-    .map((v, i) => gl.getActiveAttrib(program, i))
-    .reduce((d, { name }, index) => (d[name] = index, d), {});
+    .map((v, i) => gl.getActiveAttrib(program, i).name)
+    .reduce((d, n) => (d[n] = gl.getAttribLocation(program, n), d), {});
 
   // Construct a dictionary of functions to set a constant value for a given
   // vertex attribute, when a per-vertex buffer is not needed
   const constantSetters = Object.entries(attrIndices).reduce((d, [name, i]) => {
     d[name] = function(v) {
       gl.disableVertexAttribArray(i);
-
-      // For float attributes, the supplied value may be a Number
-      if (v.length === undefined) return gl.vertexAttrib1f(i, v);
-
-      if (![1, 2, 3, 4].includes(v.length)) return;
-      const methodName = "vertexAttrib" + v.length + "fv";
-      gl[methodName](i, v);
+      const method = getConstMethod(v.length);
+      if (method) gl[method](i, v);
     };
     return d;
   }, {});
+
+  function getConstMethod(len) {
+    if (len === undefined) return "vertexAttrib1f";
+    if ([1, 2, 3, 4].includes(len)) return "vertexAttrib" + len + "fv";
+  }
 
   function constructVao({ attributes, indices }) {
     const vao = gl.createVertexArray();
@@ -398,6 +403,9 @@ function initTextureMethods(gl) {
     const { width = 1, height = 1 } = (image) ? image : options;
 
     const texture = gl.createTexture();
+
+    // Work with first texture unit. Leave others unchanged (may be in use)
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(target, texture);
 
     gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrapS);
@@ -999,7 +1007,6 @@ in vec3 tileCoords;
 
 uniform vec4 mapCoords;   // x, y, z, extent of tileset[0]
 uniform vec3 mapShift;    // translate and scale of tileset[0]
-
 uniform vec4 screenScale; // 2 / width, -2 / height, pixRatio, cameraScale
 
 vec2 tileToMap(vec2 tilePos) {
@@ -1044,28 +1051,70 @@ float styleScale(vec2 tilePos) {
 }
 `;
 
+var defaultPreamble = `#version 300 es
+
+precision highp float;
+
+uniform vec4 screenScale; // 2 / width, -2 / height, pixRatio, cameraScale
+
+vec2 tileToMap(vec2 tilePos) {
+  return tilePos * screenScale.z;
+}
+
+vec4 mapToClip(vec2 mapPos, float z) {
+  vec2 projected = mapPos * screenScale.xy + vec2(-1.0, 1.0);
+  return vec4(projected, z, 1.0);
+}
+
+float styleScale(vec2 tilePos) {
+  return screenScale.z;
+}
+`;
+
 function setParams$2(userParams) {
   const {
-    context, framebuffer,
-    projScale = false,
-    multiTile = true,
+    context, framebuffer, extraAttributes,
+    preamble = defaultPreamble,
   } = userParams;
 
-  const scaleCode = (projScale) ? mercatorScale : simpleScale;
-  const size = framebuffer.size;
+  return { context, framebuffer, preamble, extraAttributes };
+}
 
-  context.clipRectFlipY = function(x, y, w, h) {
-    const yflip = size.height - y - h;
-    context.clipRect(x, yflip, w, h);
-  };
+var vert$4 = `in vec2 quadPos;
+
+void main() {
+  gl_Position = vec4(quadPos, 0.0, 1.0);
+}
+`;
+
+var frag$4 = `#version 300 es
+
+precision mediump float;
+
+uniform vec4 backgroundColor;
+uniform float backgroundOpacity;
+
+out vec4 pixColor;
+
+void main() {
+  float alpha = backgroundColor.a * backgroundOpacity;
+  pixColor = vec4(backgroundColor.rgb * alpha, alpha);
+}
+`;
+
+function initBackground(context) {
+  const quadPos = context.initQuad();
+
+  const styleKeys = ["background-color", "background-opacity"];
 
   return {
-    context, framebuffer, multiTile,
-    preamble: preamble + scaleCode,
+    vert: vert$4, frag: frag$4, styleKeys,
+    getSpecialAttrs: () => ({ quadPos }),
+    countInstances: () => 1,
   };
 }
 
-var vert$4 = `in vec2 quadPos; // Vertices of the quad instance
+var vert$3 = `in vec2 quadPos; // Vertices of the quad instance
 in vec2 circlePos;
 in float circleRadius;
 in vec4 circleColor;
@@ -1090,7 +1139,7 @@ void main() {
 }
 `;
 
-var frag$4 = `#version 300 es
+var frag$3 = `#version 300 es
 
 precision mediump float;
 
@@ -1112,7 +1161,6 @@ void main() {
 function initCircle(context) {
   const attrInfo = {
     circlePos: { numComponents: 2 },
-    tileCoords: { numComponents: 3 },
     circleRadius: { numComponents: 1 },
     circleColor: { numComponents: 4 },
     circleOpacity: { numComponents: 1 },
@@ -1122,13 +1170,13 @@ function initCircle(context) {
   const styleKeys = ["circle-radius", "circle-color", "circle-opacity"];
 
   return {
-    vert: vert$4, frag: frag$4, attrInfo, styleKeys,
+    vert: vert$3, frag: frag$3, attrInfo, styleKeys,
     getSpecialAttrs: () => ({ quadPos }),
     countInstances: (buffers) => buffers.circlePos.length / 2,
   };
 }
 
-var vert$3 = `in vec2 quadPos;
+var vert$2 = `in vec2 quadPos;
 in vec3 pointA, pointB, pointC, pointD;
 in vec4 lineColor;
 in float lineOpacity, lineWidth, lineGapWidth;
@@ -1242,7 +1290,7 @@ void main() {
 }
 `;
 
-var frag$3 = `#version 300 es
+var frag$2 = `#version 300 es
 
 precision highp float;
 
@@ -1302,7 +1350,6 @@ function initLine(context) {
   const { initQuad, createBuffer, initAttribute } = context;
 
   const attrInfo = {
-    tileCoords: { numComponents: 3 },
     lineColor: { numComponents: 4 },
     lineOpacity: { numComponents: 1 },
     lineWidth: { numComponents: 1 },
@@ -1346,12 +1393,12 @@ function initLine(context) {
   ];
 
   return {
-    vert: vert$3, frag: frag$3, attrInfo, styleKeys, getSpecialAttrs,
+    vert: vert$2, frag: frag$2, attrInfo, styleKeys, getSpecialAttrs,
     countInstances: (buffers) => buffers.lines.length / numComponents - 3,
   };
 }
 
-var vert$2 = `in vec2 position;
+var vert$1 = `in vec2 position;
 in vec4 fillColor;
 in float fillOpacity;
 
@@ -1368,7 +1415,7 @@ void main() {
 }
 `;
 
-var frag$2 = `#version 300 es
+var frag$1 = `#version 300 es
 
 precision mediump float;
 
@@ -1384,7 +1431,6 @@ void main() {
 function initFill() {
   const attrInfo = {
     position: { numComponents: 2, divisor: 0 },
-    tileCoords: { numComponents: 3, divisor: 0 },
     fillColor: { numComponents: 4, divisor: 0 },
     fillOpacity: { numComponents: 1, divisor: 0 },
   };
@@ -1392,95 +1438,39 @@ function initFill() {
   const styleKeys = ["fill-color", "fill-opacity", "fill-translate"];
 
   return {
-    vert: vert$2, frag: frag$2, attrInfo, styleKeys,
+    vert: vert$1, frag: frag$1, attrInfo, styleKeys,
     getSpecialAttrs: () => ({}),
   };
 }
 
-var vert$1 = `in vec2 quadPos;    // Vertices of the quad instance
-in vec3 labelPos0;   // x, y, angle
-in vec4 spritePos;  // dx, dy (relative to labelPos0), w, h
-in vec4 spriteRect; // x, y, w, h
+var vert = `in vec2 quadPos;   // Vertices of the quad instance
+in vec4 labelPos;  // x, y, angle, font size scalar (0 for icons)
+in vec4 glyphPos;  // dx, dy (relative to labelPos), w, h
+in vec4 glyphRect; // x, y, w, h
+
 in float iconOpacity;
 
-out float opacity;
-out vec2 texCoord;
-
-void main() {
-  texCoord = spriteRect.xy + spriteRect.zw * quadPos;
-  opacity = iconOpacity;
-
-  vec2 mapPos = tileToMap(labelPos0.xy);
-
-  // Shift to the appropriate corner of the current instance quad
-  vec2 dPos = (spritePos.xy + spritePos.zw * quadPos) * styleScale(labelPos0.xy);
-
-  float cos_a = cos(labelPos0.z);
-  float sin_a = sin(labelPos0.z);
-  float dx = dPos.x * cos_a - dPos.y * sin_a;
-  float dy = dPos.x * sin_a + dPos.y * cos_a;
-
-  gl_Position = mapToClip(mapPos + vec2(dx, dy), 0.0);
-}
-`;
-
-var frag$1 = `#version 300 es
-
-precision highp float;
-
-uniform sampler2D sprite;
-
-in float opacity;
-in vec2 texCoord;
-
-out vec4 pixColor;
-
-void main() {
-  vec4 texColor = texture(sprite, texCoord);
-  // Input sprite does NOT have pre-multiplied alpha
-  pixColor = vec4(texColor.rgb * texColor.a, texColor.a) * opacity;
-}
-`;
-
-function initSprite(context) {
-  const attrInfo = {
-    labelPos0: { numComponents: 3 },
-    spritePos: { numComponents: 4 },
-    spriteRect: { numComponents: 4 },
-    tileCoords: { numComponents: 3 },
-    iconOpacity: { numComponents: 1 },
-  };
-  const quadPos = context.initQuad({ x0: 0.0, y0: 0.0, x1: 1.0, y1: 1.0 });
-
-  const styleKeys = ["icon-opacity"];
-
-  return {
-    vert: vert$1, frag: frag$1, attrInfo, styleKeys,
-    getSpecialAttrs: () => ({ quadPos }),
-    countInstances: (buffers) => buffers.labelPos0.length / 3,
-  };
-}
-
-var vert = `in vec2 quadPos;  // Vertices of the quad instance
-in vec4 labelPos; // x, y, angle, font size scalar
-in vec4 charPos;  // dx, dy (relative to labelPos), w, h
-in vec4 sdfRect;  // x, y, w, h
 in vec4 textColor;
 in float textOpacity;
 in float textHaloBlur;
 in vec4 textHaloColor;
 in float textHaloWidth;
 
+out vec2 texCoord;
+
+out float opacity;
+
 out vec4 fillColor;
 out vec4 haloColor;
 out vec2 haloSize; // width, blur
-out vec2 texCoord;
 out float taperWidth;
 
 void main() {
-  texCoord = sdfRect.xy + sdfRect.zw * quadPos;
+  // For icons only
+  opacity = iconOpacity;
 
-  taperWidth = labelPos.w * screenScale.z;
+  // For text only
+  taperWidth = labelPos.w * screenScale.z; // == 0.0 for icon glyphs
   haloSize = vec2(textHaloWidth, textHaloBlur) * screenScale.z;
 
   float fillAlpha = textColor.a * textOpacity;
@@ -1488,10 +1478,14 @@ void main() {
   float haloAlpha = textHaloColor.a * textOpacity;
   haloColor = vec4(textHaloColor.rgb * haloAlpha, haloAlpha);
 
+  // Texture coordinates
+  texCoord = glyphRect.xy + glyphRect.zw * quadPos;
+
+  // Compute glyph position. First transform the label origin
   vec2 mapPos = tileToMap(labelPos.xy);
 
   // Shift to the appropriate corner of the current instance quad
-  vec2 dPos = (charPos.xy + charPos.zw * quadPos) * styleScale(labelPos.xy);
+  vec2 dPos = (glyphPos.xy + glyphPos.zw * quadPos) * styleScale(labelPos.xy);
 
   float cos_a = cos(labelPos.z);
   float sin_a = sin(labelPos.z);
@@ -1506,17 +1500,26 @@ var frag = `#version 300 es
 
 precision highp float;
 
-uniform sampler2D sdf;
+uniform sampler2D sprite, sdf;
+
+in vec2 texCoord;
+
+in float opacity;
 
 in vec4 fillColor;
 in vec4 haloColor;
 in vec2 haloSize; // width, blur
-in vec2 texCoord;
-in float taperWidth;
+in float taperWidth; // 0 for icons
 
 out vec4 pixColor;
 
 void main() {
+  // Get color from sprite if this is an icon glyph
+  vec4 spritePix = texture(sprite, texCoord);
+  // Input sprite does NOT have pre-multiplied alpha
+  vec4 iconColor = vec4(spritePix.rgb * spritePix.a, spritePix.a) * opacity;
+
+  // Compute fill and halo color from sdf if this is a text glyph
   float sdfVal = texture(sdf, texCoord).a;
   float screenDist = taperWidth * (191.0 - 255.0 * sdfVal) / 32.0;
 
@@ -1526,17 +1529,19 @@ void main() {
   float haloAlpha = (haloSize.x > 0.0 || haloSize.y > 0.0)
     ? (1.0 - fillAlpha) * smoothstep(-hTaper, -hEdge, -screenDist)
     : 0.0;
+  vec4 textColor = fillColor * fillAlpha + haloColor * haloAlpha;
 
-  pixColor = fillColor * fillAlpha + haloColor * haloAlpha;
+  // Choose icon or text color based on taperWidth value
+  pixColor = (taperWidth == 0.0) ? iconColor : textColor;
 }
 `;
 
-function initText(context) {
+function initSymbol(context) {
   const attrInfo = {
     labelPos: { numComponents: 4 },
-    charPos: { numComponents: 4 },
-    sdfRect: { numComponents: 4 },
-    tileCoords: { numComponents: 3 },
+    glyphPos: { numComponents: 4 },
+    glyphRect: { numComponents: 4 },
+    iconOpacity: { numComponents: 1 },
     textColor: { numComponents: 4 },
     textOpacity: { numComponents: 1 },
     textHaloBlur: { numComponents: 1 },
@@ -1546,6 +1551,7 @@ function initText(context) {
   const quadPos = context.initQuad({ x0: 0.0, y0: 0.0, x1: 1.0, y1: 1.0 });
 
   const styleKeys = [
+    "icon-opacity",
     "text-color",
     "text-opacity",
     "text-halo-blur",
@@ -1560,12 +1566,14 @@ function initText(context) {
   };
 }
 
-function initLoader(context, progInfo, constructVao) {
+function initLoader(context, info, constructVao, extraAttributes) {
   const { initAttribute, initIndices } = context;
-  const { attrInfo, getSpecialAttrs, countInstances } = progInfo;
+  const { attrInfo, getSpecialAttrs, countInstances } = info;
+
+  const allAttrs = Object.assign({}, attrInfo, extraAttributes);
 
   function getAttributes(buffers) {
-    return Object.entries(attrInfo).reduce((d, [key, info]) => {
+    return Object.entries(allAttrs).reduce((d, [key, info]) => {
       const data = buffers[key];
       if (data) d[key] = initAttribute(Object.assign({ data }, info));
       return d;
@@ -1588,43 +1596,44 @@ function initLoader(context, progInfo, constructVao) {
   return (countInstances) ? loadInstanced : loadIndexed;
 }
 
-function initGrid(use, uniformSetters, framebuffer) {
-  const { screenScale, mapCoords, mapShift } = uniformSetters;
+function compilePrograms(params) {
+  const { context, preamble, extraAttributes } = params;
 
-  function setScreen(pixRatio = 1.0, cameraScale = 1.0) {
-    const { width, height } = framebuffer.size;
-    screenScale([2 / width, -2 / height, pixRatio, cameraScale]);
+  const progInfo = {
+    background: initBackground(context),
+    circle: initCircle(context),
+    line: initLine(context),
+    fill: initFill(),
+    symbol: initSymbol(context),
+  };
+
+  function compile(info) {
+    const { vert, frag, styleKeys } = info;
+    const program = context.initProgram(preamble + vert, frag);
+    const { use, constructVao, uniformSetters } = program;
+    const load = initLoader(context, info, constructVao, extraAttributes);
+    return { load, use, uniformSetters, styleKeys };
   }
 
-  function setCoords({ x, y, z }) {
-    const numTiles = 1 << z;
-    const xw = x - Math.floor(x / numTiles) * numTiles;
-    const extent = 512; // TODO: don't assume this!!
-    mapCoords([xw, y, z, extent]);
-    return numTiles;
-  }
-
-  function setShift(tileset, pixRatio = 1) {
-    const { x, y } = tileset[0];
-    const { translate, scale: rawScale } = tileset;
-    const scale = rawScale * pixRatio;
-    const [dx, dy] = [x, y].map((c, i) => (c + translate[i]) * scale);
-    mapShift([dx, dy, scale]);
-    return { translate, scale };
-  }
-
-  return { use, setScreen, setCoords, setShift };
+  return Object.entries(progInfo)
+    .reduce((d, [k, info]) => (d[k] = compile(info), d), {});
 }
 
 function camelCase(hyphenated) {
   return hyphenated.replace(/-([a-z])/gi, (h, c) => c.toUpperCase());
 }
 
-function initStyleProg(style, styleKeys, uniformSetters, spriteTexture) {
-  // TODO: check if spriteTexture is a WebGLTexture
-  const { id, type, paint } = style;
-  const { sdf, sprite } = uniformSetters;
-  const haveSprite = sprite && (spriteTexture instanceof WebGLTexture);
+function initStyleProg(style, program, context, framebuffer) {
+  if (!program) return;
+
+  const { id, type, layout, paint } = style;
+  const { load, use, uniformSetters, styleKeys } = program;
+  const { sdf, screenScale } = uniformSetters;
+
+  if (type === "line") {
+    // We handle line-miter-limit in the paint phase, not layout phase
+    paint["line-miter-limit"] = layout["line-miter-limit"];
+  }
 
   const zoomFuncs = styleKeys
     .filter(styleKey => paint[styleKey].type !== "property")
@@ -1635,87 +1644,124 @@ function initStyleProg(style, styleKeys, uniformSetters, spriteTexture) {
       return (z, f) => set(get(z, f));
     });
 
-  function setStyles(zoom) {
+  function setStyles(zoom, pixRatio = 1.0, cameraScale = 1.0) {
+    use();
     zoomFuncs.forEach(f => f(zoom));
-    if (haveSprite) sprite(spriteTexture);
+    if (!screenScale) return;
+    const { width, height } = framebuffer.size;
+    screenScale([2 / width, -2 / height, pixRatio, cameraScale]);
   }
 
-  const getData = (type !== "symbol") ? getFeatures :
-    (haveSprite) ? getIcons : getText;
+  const getData = (type === "background") ? initBackgroundData() : getFeatures;
+
+  function draw(tile) {
+    const data = getData(tile);
+    if (data) context.draw(data.buffers);
+  }
+
+  function initBackgroundData() {
+    const buffers = load({});
+    return () => ({ buffers });
+  }
 
   function getFeatures(tile) {
-    return tile.data.layers[id];
-  }
-
-  function getIcons(tile) {
-    const layer = tile.data.layers[id];
-    if (!layer) return;
-    const { type, extent, buffers: { sprite } } = layer;
-    if (sprite) return { type, extent, buffers: sprite };
-  }
-
-  function getText(tile) {
     const { layers: { [id]: layer }, atlas } = tile.data;
-    if (!layer || !atlas) return;
-    const { type, extent, buffers: { text } } = layer;
-    if (!text || !sdf) return;
-    sdf(atlas);
-    return { type, extent, buffers: text };
+    if (sdf && atlas) sdf(atlas);
+    return layer;
   }
 
-  return { setStyles, getData };
+  return { id, type, setStyles, getData, uniformSetters, paint: draw };
 }
 
-function initTilePainter(context, program, layer, multiTile) {
-  return (multiTile) ? drawTileset : drawTile;
+function initGL$1(userParams) {
+  const params = setParams$2(userParams);
+  const { context, framebuffer } = params;
+  const programs = compilePrograms(params);
 
-  function drawTile({ tile, zoom, pixRatio = 1.0, cameraScale = 1.0 }) {
-    program.use();
+  return { prep, loadAtlas, loadBuffers, loadSprite, initPainter };
 
-    const data = layer.getData(tile);
-    if (!data) return;
-    const z = (zoom !== undefined) ? zoom : tile.z;
-    layer.setStyles(z);
-
-    program.setScreen(pixRatio, cameraScale);
-    program.setCoords(tile);
-
-    const fakeTileset = [{ x: 0, y: 0 }];
-    Object.assign(fakeTileset, { translate: [0, 0], scale: 512 });
-    program.setShift(fakeTileset, pixRatio);
-
-    context.draw(data.buffers);
+  function prep() {
+    context.bindFramebufferAndSetViewport(framebuffer);
+    return context.clear();
   }
 
-  function drawTileset({ tileset, zoom, pixRatio = 1.0, cameraScale = 1.0 }) {
+  function loadAtlas(atlas) { // TODO: name like loadSprite, different behavior
+    const format = context.gl.ALPHA;
+    const { width, height, data } = atlas;
+    return context.initTexture({ format, width, height, data, mips: false });
+  }
+
+  function loadBuffers(layer) {
+    const program = programs[layer.type];
+    if (!program) throw Error("tile-gl loadBuffers: unknown layer type");
+    layer.buffers = program.load(layer.buffers);
+  }
+
+  function loadSprite(image) {
+    if (!image) return false;
+    const spriteTex = context.initTexture({ image, mips: false });
+    programs.symbol.use();
+    programs.symbol.uniformSetters.sprite(spriteTex);
+    return true;
+  }
+
+  function initPainter(style) {
+    return initStyleProg(style, programs[style.type], context, framebuffer);
+  }
+}
+
+function antiMeridianSplit(tileset) {
+  // At low zooms, some tiles may be repeated on opposite ends of the map
+  // We split them into subsets, one tileset for each copy of the map
+
+  const { 0: { x, z }, translate, scale } = tileset;
+  const numTiles = 1 << z;
+
+  function inRange(tile, shift) {
+    const delta = tile.x - x - shift;
+    return (0 <= delta && delta < numTiles);
+  }
+
+  return [0, 1, 2]
+    .map(repeat => repeat * numTiles)
+    .map(shift => tileset.filter(tile => inRange(tile, shift)))
+    .map(tiles => Object.assign(tiles, { translate, scale }))
+    .filter(subset => subset.length);
+}
+
+function initTilesetPainter(layer, context, fbSize) {
+  const { mapCoords, mapShift } = layer.uniformSetters;
+
+  return (layer.type === "background") ? paintBackground : paintTileset;
+
+  function paintBackground({ zoom, pixRatio = 1.0, cameraScale = 1.0 }) {
+    layer.setStyles(zoom, pixRatio, cameraScale);
+    layer.paint();
+  }
+
+  function paintTileset({ tileset, zoom, pixRatio = 1.0, cameraScale = 1.0 }) {
     if (!tileset || !tileset.length) return;
+    layer.setStyles(zoom, pixRatio, cameraScale);
 
-    program.use();
-    program.setScreen(pixRatio, cameraScale);
-    layer.setStyles(zoom);
+    // Set mapCoords
+    const { x, y, z } = tileset[0];
+    const numTiles = 1 << z;
+    const xw = x - Math.floor(x / numTiles) * numTiles;
+    const extent = 512; // TODO: don't assume this!!
+    mapCoords([xw, y, z, extent]);
 
-    const numTiles = program.setCoords(tileset[0]);
-    const subsets = antiMeridianSplit(tileset, numTiles);
-
-    subsets.forEach(subset => {
-      const { translate, scale } = program.setShift(subset, pixRatio);
-      subset.forEach(t => drawTileBox(t, translate, scale));
-    });
+    // Draw tiles. Split into subsets if they are repeated across antimeridian
+    antiMeridianSplit(tileset).forEach(subset => drawSubset(subset, pixRatio));
   }
 
-  function antiMeridianSplit(tileset, numTiles) {
-    const { translate, scale } = tileset;
-    const { x } = tileset[0];
+  function drawSubset(tileset, pixRatio = 1) {
+    const { 0: { x, y }, translate, scale: rawScale } = tileset;
+    const scale = rawScale * pixRatio;
 
-    // At low zooms, some tiles may be repeated on opposite ends of the map
-    // We split them into subsets, one tileset for each copy of the map
-    return [0, 1, 2].map(repeat => repeat * numTiles).map(shift => {
-      const tiles = tileset.filter(tile => {
-        const delta = tile.x - x - shift;
-        return (delta >= 0 && delta < numTiles);
-      });
-      return Object.assign(tiles, { translate, scale });
-    }).filter(subset => subset.length);
+    const [dx, dy] = [x, y].map((c, i) => (c + translate[i]) * scale);
+    mapShift([dx, dy, scale]);
+
+    tileset.forEach(tile => drawTileBox(tile, translate, scale));
   }
 
   function drawTileBox(box, translate, scale) {
@@ -1724,214 +1770,61 @@ function initTilePainter(context, program, layer, multiTile) {
     if (!data) return;
 
     const [x0, y0] = [x, y].map((c, i) => (c + translate[i]) * scale);
-    context.clipRectFlipY(x0, y0, scale, scale);
+    clipRect(x0, y0, scale, scale);
 
     context.draw(data.buffers);
   }
-}
 
-function initPrograms(context, framebuffer, preamble, multiTile) {
-  return {
-    "circle": setupProgram(initCircle(context)),
-    "line": setupProgram(initLine(context)),
-    "fill": setupProgram(initFill()),
-    "symbol": setupSymbol(),
-  };
-
-  function setupSymbol() {
-    const spriteProg = setupProgram(initSprite(context));
-    const textProg = setupProgram(initText(context));
-
-    function load(buffers) {
-      const loaded = {};
-      if (buffers.spritePos) loaded.sprite = spriteProg.load(buffers);
-      if (buffers.charPos) loaded.text = textProg.load(buffers);
-      return loaded;
-    }
-
-    function initPainter(style, sprite) {
-      const iconPaint = spriteProg.initPainter(style, sprite);
-      const textPaint = textProg.initPainter(style);
-
-      return function(params) {
-        iconPaint(params);
-        textPaint(params);
-      };
-    }
-
-    return { load, initPainter };
-  }
-
-  function setupProgram(progInfo) {
-    const { vert, frag, styleKeys } = progInfo;
-
-    const program = context.initProgram(preamble + vert, frag);
-    const { use, uniformSetters, constructVao } = program;
-
-    const load = initLoader(context, progInfo, constructVao);
-    const grid = initGrid(use, uniformSetters, framebuffer);
-
-    function initPainter(style, sprite) {
-      const styleProg = initStyleProg(style, styleKeys, uniformSetters, sprite);
-      return initTilePainter(context, grid, styleProg, multiTile);
-    }
-
-    return { load, initPainter };
+  function clipRect(x, y, w, h) {
+    const yflip = fbSize.height - y - h;
+    context.clipRect(x, yflip, w, h);
   }
 }
 
-function initBackground(context) {
-  function initPainter({ paint }) {
-    return function({ zoom }) {
-      const opacity = paint["background-opacity"](zoom);
-      const color = paint["background-color"](zoom);
-      context.clear(color.map(c => c * opacity));
-    };
-  }
-
-  return { initPainter };
-}
-
-function initGLpaint(userParams) {
-  const { context, framebuffer, preamble, multiTile } = setParams$2(userParams);
-
-  const programs = initPrograms(context, framebuffer, preamble, multiTile);
-  programs["background"] = initBackground(context);
-
-  function prep() {
-    context.bindFramebufferAndSetViewport(framebuffer);
-    return context.clear();
-  }
-
-  function loadBuffers(layer) {
-    const { type, buffers } = layer;
-
-    const program = programs[type];
-    if (!program) throw "loadBuffers: unknown layer type";
-
-    layer.buffers = program.load(buffers);
-  }
-
-  function loadAtlas(atlas) {
-    const format = context.gl.ALPHA;
-    const { width, height, data } = atlas;
-    return context.initTexture({ format, width, height, data, mips: false });
-  }
-
-  function loadSprite(image) {
-    if (image) return context.initTexture({ image, mips: false });
-  }
-
-  function initPainter(style, sprite) {
-    const { id, type, source, minzoom = 0, maxzoom = 24 } = style;
-
-    const program = programs[type];
-    if (!program) return () => null;
-
-    const { layout, paint } = style;
-    if (type === "line") {
-      // We handle line-miter-limit in the paint phase, not layout phase
-      paint["line-miter-limit"] = layout["line-miter-limit"];
-    }
-    const painter = program.initPainter(style, sprite);
-    return Object.assign(painter, { id, type, source, minzoom, maxzoom });
-  }
-
-  return { prep, loadBuffers, loadAtlas, loadSprite, initPainter };
-}
-
-function setParams$1(userParams) {
-  const gl = userParams.context.gl;
-  if (!(gl instanceof WebGL2RenderingContext)) fail$1("no valid WebGL context");
-
+function initGL(userParams) {
   const {
-    context,
-    framebuffer = { buffer: null, size: gl.canvas },
-    center = [0.0, 0.0], // ASSUMED to be in degrees!
-    zoom = 4,
-    style,
-    mapboxToken,
-    clampY = true,
-    units = "degrees",
+    context, framebuffer,
     projScale = false,
   } = userParams;
 
-  const { buffer, size } = framebuffer;
-  if (!(buffer instanceof WebGLFramebuffer) && buffer !== null) {
-    fail$1("no valid framebuffer");
-  }
+  const scaleCode = (projScale) ? mercatorScale : simpleScale;
 
-  const sizeType =
-    (size && allPosInts(size.clientWidth, size.clientHeight)) ? "client" :
-    (size && allPosInts(size.width, size.height)) ? "raw" :
-    null;
-  if (!sizeType) fail$1("invalid size object in framebuffer");
-  const getViewport = (sizeType === "client")
-    ? () => ([size.clientWidth, size.clientHeight])
-    : () => ([size.width, size.height]);
-
-  const validUnits = ["degrees", "radians", "xy"];
-  if (!validUnits.includes(units)) fail$1("invalid units");
-  const projection = getProjection(units);
-
-  // Convert initial center position from degrees to the specified units
-  if (!checkCoords$1(center, 2)) fail$1("invalid center coordinates");
-  const projCenter = getProjection("degrees").forward(center);
-  if (!all0to1(...projCenter)) fail$1 ("invalid center coordinates");
-  const invCenter = projection.inverse(projCenter);
-
-  if (!Number.isFinite(zoom)) fail$1("invalid zoom value");
-
-  const coords = initCoords({
-    getViewport, projection,
-    center: invCenter,
-    zoom, clampY,
+  const tileContext = initGL$1({
+    context, framebuffer,
+    preamble: preamble + scaleCode,
+    extraAttributes: { tileCoords: { numComponents: 3 } },
   });
 
-  return {
-    gl, framebuffer,
-    projection, coords,
-    style, mapboxToken,
-    context: initGLpaint({ context, framebuffer, projScale }),
+  // Replace initPainter method with a multi-tile program
+  const initPainter = tileContext.initPainter;
+  tileContext.initPainter = function(style) {
+    const layer = initPainter(style);
+    const painter = (layer)
+      ? initTilesetPainter(layer, context, framebuffer.size)
+      : () => null;
+    const { id, type, source, minzoom = 0, maxzoom = 24 } = style;
+    return Object.assign(painter, { id, type, source, minzoom, maxzoom });
   };
-}
 
-function fail$1(message) {
-  throw Error("tile-setter parameter check: " + message + "!");
-}
-
-function allPosInts(...vals) {
-  return vals.every(v => Number.isInteger(v) && v > 0);
-}
-
-function all0to1(...vals) {
-  return vals.every(v => Number.isFinite(v) && v >= 0 && v <= 1);
-}
-
-function checkCoords$1(p, n) {
-  const isArray = Array.isArray(p) ||
-    (ArrayBuffer.isView(p) && !(p instanceof DataView));
-  return isArray && p.length >= n &&
-    p.slice(0, n).every(Number.isFinite);
+  return tileContext;
 }
 
 function expandStyleURL(url, token) {
   const prefix = /^mapbox:\/\/styles\//;
-  if ( !url.match(prefix) ) return url;
+  if (!url.match(prefix)) return url;
   const apiRoot = "https://api.mapbox.com/styles/v1/";
   return url.replace(prefix, apiRoot) + "?access_token=" + token;
 }
 
 function expandSpriteURLs(url, pixRatio, token) {
   // Returns an array containing urls to .png and .json files
-  const { min, max, floor } = Math;
-  const ratio = floor(min(max(1.0, pixRatio), 4.0));
+  const ratio = Math.floor(Math.min(Math.max(1.0, pixRatio), 4.0));
   const ratioStr = (ratio > 1)
     ? "@" + ratio + "x"
     : "";
 
   const prefix = /^mapbox:\/\/sprites\//;
-  if ( !url.match(prefix) ) return {
+  if (!url.match(prefix)) return {
     image: url + ratioStr + ".png",
     meta: url + ratioStr + ".json",
   };
@@ -1948,14 +1841,14 @@ function expandSpriteURLs(url, pixRatio, token) {
 
 function expandTileURL(url, token) {
   const prefix = /^mapbox:\/\//;
-  if ( !url.match(prefix) ) return url;
+  if (!url.match(prefix)) return url;
   const apiRoot = "https://api.mapbox.com/v4/";
   return url.replace(prefix, apiRoot) + ".json?secure&access_token=" + token;
 }
 
 function expandGlyphURL(url, token) {
   const prefix = /^mapbox:\/\/fonts\//;
-  if ( !url.match(prefix) ) return url;
+  if (!url.match(prefix)) return url;
   const apiRoot = "https://api.mapbox.com/fonts/v1/";
   return url.replace(prefix, apiRoot) + "?access_token=" + token;
 }
@@ -2002,6 +1895,12 @@ function getImage(href) {
     img.crossOrigin = "anonymous";
     img.src = href;
   });
+}
+
+function warn(message) {
+  console.log("tile-stencil had a problem loading part of the style document");
+  console.log("  " + message);
+  console.log("  Not a fatal error. Proceeding with the rest of the style...");
 }
 
 function define(constructor, factory, prototype) {
@@ -2678,54 +2577,24 @@ const paintDefaults = {
   },
 };
 
-const refProperties = [
-  "type",
-  "source",
-  "source-layer",
-  "minzoom",
-  "maxzoom",
-  "filter",
-  "layout"
-];
+const refProperties = ["type", "minzoom", "maxzoom",
+  "source", "source-layer", "filter", "layout"];
 
 function derefLayers(layers) {
-  // From mapbox-gl-js, style-spec/deref.js
-  /**
-   * Given an array of layers, some of which may contain `ref` properties
-   * whose value is the `id` of another property, return a new array where
-   * such layers have been augmented with the 'type', 'source', etc. properties
-   * from the parent layer, and the `ref` property has been removed.
-   *
-   * The input is not modified. The output may contain references to portions
-   * of the input.
-   */
-  layers = layers.slice(); // ??? What are we trying to achieve here?
+  // Some layers in Mapbox styles contain a non-standard "ref" property,
+  // pointing to the "id" of another layer.
+  // Augment these layers with properties from the referenced layer
 
-  const map = Object.create(null); // stackoverflow.com/a/21079232/10082269
-  layers.forEach( layer => { map[layer.id] = layer; } );
-
-  for (let i = 0; i < layers.length; i++) {
-    if ("ref" in layers[i]) {
-      layers[i] = deref(layers[i], map[layers[i].ref]);
-    }
-  }
-
-  return layers;
+  const map = layers.reduce((m, l) => (m[l.id] = l, m), {});
+  return layers.map(l => ("ref" in l) ? deref(l, map[l.ref]) : l);
 }
 
 function deref(layer, parent) {
-  const result = {};
+  const result = Object.assign({}, layer);
+  delete result.ref;
 
-  for (const k in layer) {
-    if (k !== "ref") {
-      result[k] = layer[k];
-    }
-  }
-
-  refProperties.forEach((k) => {
-    if (k in parent) {
-      result[k] = parent[k];
-    }
+  refProperties.forEach(k => {
+    if (k in parent) result[k] = parent[k];
   });
 
   return result;
@@ -2758,47 +2627,28 @@ function expandSources(rawSources, token) {
       (url) ? getJSON(expandTileURL(url, token)) : // Get linked TileJSON
       Promise.resolve({}); // No linked info
 
-    return infoPromise.then(info => {
-      // Assign everything to a new object for return.
-      // Note: shallow copy! Some properties may point back to the original
-      // style document, like .vector_layers, .bounds, .center, .extent
-      const updatedSource = Object.assign({}, source, info, { type });
-      return { [key]: updatedSource };
-    });
+    return infoPromise.then(
+      val => ({ [key]: Object.assign({}, source, val, { type }) }),
+      err => (warn("sources." + key + ": " + err.message), ({}))
+    );
   }
 
-  return Promise.allSettled(expandPromises)
-    .then(results => results.reduce(processResult, {}));
-
-  function processResult(sources, result) {
-    if (result.status === "fulfilled") {
-      return Object.assign(sources, result.value);
-    } else {
-      // If one source fails to load, just log the reason and move on
-      warn("Error loading sources: " + result.reason.message);
-      return sources;
-    }
-  }
+  return Promise.all(expandPromises).then(results => {
+    return results.reduce((a, c) => Object.assign(a, c), {});
+  });
 }
 
 function loadSprite(sprite, token) {
   if (!sprite) return;
 
-  const pixRatio = window?.devicePixelRatio || 1.0;
+  const notWorker = (window && window.devicePixelRatio);
+  const pixRatio = (notWorker) ? window.devicePixelRatio : 1.0;
   const urls = expandSpriteURLs(sprite, pixRatio, token);
 
-  return Promise.all([getImage(urls.image), getJSON(urls.meta)])
-    .then( ([image, meta]) => ({ image, meta }) )
-    .catch(err => {
-      // If sprite doesn't load, just log the error and move on
-      warn("Error loading sprite: " + err.message);
-    });
-}
-
-function warn(message) {
-  console.log("tile-stencil had a problem loading part of the style document");
-  console.log("  " + message);
-  console.log("  Not a fatal error. Proceeding with the rest of the style...");
+  return Promise.all([getImage(urls.image), getJSON(urls.meta)]).then(
+    ([image, meta]) => ({ image, meta }),
+    err => warn("sprite: " + err.message)
+  );
 }
 
 function getStyleFuncs(inputLayer) {
@@ -2837,6 +2687,81 @@ function checkStyle(doc) {
     null;
 
   return (error) ? Promise.reject(error) : doc;
+}
+
+function setParams$1(userParams) {
+  const gl = userParams.context.gl;
+  if (!(gl instanceof WebGL2RenderingContext)) fail$1("no valid WebGL context");
+
+  const {
+    context,
+    framebuffer = { buffer: null, size: gl.canvas },
+    center = [0.0, 0.0], // ASSUMED to be in degrees!
+    zoom = 4,
+    style,
+    mapboxToken,
+    clampY = true,
+    units = "degrees",
+    projScale = false,
+  } = userParams;
+
+  const { buffer, size } = framebuffer;
+  if (!(buffer instanceof WebGLFramebuffer) && buffer !== null) {
+    fail$1("no valid framebuffer");
+  }
+
+  const sizeType =
+    (size && allPosInts(size.clientWidth, size.clientHeight)) ? "client" :
+    (size && allPosInts(size.width, size.height)) ? "raw" :
+    null;
+  if (!sizeType) fail$1("invalid size object in framebuffer");
+  const getViewport = (sizeType === "client")
+    ? () => ([size.clientWidth, size.clientHeight])
+    : () => ([size.width, size.height]);
+
+  const validUnits = ["degrees", "radians", "xy"];
+  if (!validUnits.includes(units)) fail$1("invalid units");
+  const projection = getProjection(units);
+
+  // Convert initial center position from degrees to the specified units
+  if (!checkCoords$1(center, 2)) fail$1("invalid center coordinates");
+  const projCenter = getProjection("degrees").forward(center);
+  if (!all0to1(...projCenter)) fail$1 ("invalid center coordinates");
+  const invCenter = projection.inverse(projCenter);
+
+  if (!Number.isFinite(zoom)) fail$1("invalid zoom value");
+
+  const coords = initCoords({
+    getViewport, projection,
+    center: invCenter,
+    zoom, clampY,
+  });
+
+  return {
+    gl, framebuffer,
+    projection, coords,
+    style, mapboxToken,
+    context: initGL({ context, framebuffer, projScale }),
+  };
+}
+
+function fail$1(message) {
+  throw Error("tile-setter parameter check: " + message + "!");
+}
+
+function allPosInts(...vals) {
+  return vals.every(v => Number.isInteger(v) && v > 0);
+}
+
+function all0to1(...vals) {
+  return vals.every(v => Number.isFinite(v) && v >= 0 && v <= 1);
+}
+
+function checkCoords$1(p, n) {
+  const isArray = Array.isArray(p) ||
+    (ArrayBuffer.isView(p) && !(p instanceof DataView));
+  return isArray && p.length >= n &&
+    p.slice(0, n).every(Number.isFinite);
 }
 
 initZeroTimeouts$1();
@@ -3040,13 +2965,13 @@ function setParams$3(userParams) {
     source, glyphs, layers, spriteData,
   } = userParams;
 
-  if (source?.type === "vector") {
+  if (source && source.type === "vector") {
     if (!source.tiles.length) fail$2("no valid vector tile endpoint");
-  } else if (source?.type !== "geojson") {
+  } else if (source && source.type !== "geojson") {
     fail$2("no valid vector or geojson source");
   }
 
-  if (!layers?.length) fail$2 ("no valid array of style layers");
+  if (!layers || !layers.length) fail$2 ("no valid array of style layers");
   if (!layers.every(isVector)) fail$2("not all layers are vector layers");
 
   const sameSource = layers.every(l => l.source === layers[0].source);
@@ -6466,28 +6391,26 @@ function updateFonts(fonts, feature) {
   return fonts;
 }
 
-function initStyleGetters(keys, { layout, paint }) {
-  const layoutFuncs = keys.layout
-    .map(k => ([camelCase$1(k), layout[k]]));
+function initStyleGetters(keys, { layout }) {
+  const styleFuncs = keys.map(k => ([layout[k], camelCase$1(k)]));
 
-  const bufferFuncs = keys.paint
-    .filter(k => paint[k].type === "property")
-    .map(k => ([camelCase$1(k), paint[k]]));
-
-  return function(zoom, feature) {
-    const layoutVals = layoutFuncs
-      .reduce((d, [k, f]) => (d[k] = f(zoom, feature), d), {});
-
-    const bufferVals = bufferFuncs
-      .reduce((d, [k, f]) => (d[k] = f(zoom, feature), d), {});
-
-    return { layoutVals, bufferVals };
+  return function(z, feature) {
+    return styleFuncs.reduce((d, [g, k]) => (d[k] = g(z, feature), d), {});
   };
 }
 
 function camelCase$1(hyphenated) {
   return hyphenated.replace(/-([a-z])/gi, (h, c) => c.toUpperCase());
 }
+
+const styleKeys = [
+  "icon-opacity",
+  "text-color",
+  "text-opacity",
+  "text-halo-blur",
+  "text-halo-color",
+  "text-halo-width",
+];
 
 function getBox(w, h, anchor, offset) {
   const [sx, sy] = getBoxShift(anchor);
@@ -6548,15 +6471,13 @@ function initIcon(style, spriteData = {}) {
   const { image: { width, height } = {}, meta = {} } = spriteData;
   if (!width || !height) return () => undefined;
 
-  const getStyles = initStyleGetters(iconKeys, style);
+  const getStyles = initStyleGetters(iconLayoutKeys, style);
 
   return function(feature, tileCoords) {
     const sprite = getSprite(feature.spriteID);
     if (!sprite) return;
 
-    const { layoutVals, bufferVals } = getStyles(tileCoords.z, feature);
-    const icon = layoutSprite(sprite, layoutVals);
-    return Object.assign(icon, { bufferVals }); // TODO: rethink this
+    return layoutSprites(sprite, getStyles(tileCoords.z, feature));
   };
 
   function getSprite(spriteID) {
@@ -6572,21 +6493,16 @@ function initIcon(style, spriteData = {}) {
   }
 }
 
-const iconKeys = {
-  layout: [
-    "icon-anchor",
-    "icon-offset",
-    "icon-padding",
-    "icon-rotation-alignment",
-    "icon-size",
-  ],
-  paint: [
-    "icon-opacity",
-  ],
-};
+const iconLayoutKeys = [
+  "icon-anchor",
+  "icon-offset",
+  "icon-padding",
+  "icon-rotation-alignment",
+  "icon-size",
+];
 
-function layoutSprite(sprite, styleVals) {
-  const { metrics: { w, h }, spriteRect } = sprite;
+function layoutSprites(sprite, styleVals) {
+  const { metrics: { w, h }, spriteRect: rect } = sprite;
 
   const { iconAnchor, iconOffset, iconSize, iconPadding } = styleVals;
   const iconbox = getBox(w, h, iconAnchor, iconOffset);
@@ -6594,7 +6510,8 @@ function layoutSprite(sprite, styleVals) {
 
   const pos = [iconbox.x, iconbox.y, w, h].map(c => c * iconSize);
 
-  return { pos, rect: spriteRect, bbox };
+  // Structure return value to match ../text
+  return Object.assign([{ pos, rect }], { bbox, fontScalar: 0.0 });
 }
 
 const whitespace = {
@@ -6831,43 +6748,33 @@ function layout(glyphs, styleVals) {
 }
 
 function initText(style) {
-  const getStyles = initStyleGetters(textKeys, style);
+  const getStyles = initStyleGetters(textLayoutKeys, style);
 
   return function(feature, tileCoords, atlas) {
     const glyphs = getGlyphs(feature, atlas);
     if (!glyphs || !glyphs.length) return;
 
-    const { layoutVals, bufferVals } = getStyles(tileCoords.z, feature);
-    const chars = layout(glyphs, layoutVals);
-    return Object.assign(chars, { bufferVals }); // TODO: rethink this
+    return layout(glyphs, getStyles(tileCoords.z, feature));
   };
 }
 
-const textKeys = {
-  layout: [
-    "symbol-placement", // TODO: both here and in ../anchors/anchors.js
-    "text-anchor",
-    "text-justify",
-    "text-letter-spacing",
-    "text-line-height",
-    "text-max-width",
-    "text-offset",
-    "text-padding",
-    "text-rotation-alignment",
-    "text-size",
-  ],
-  paint: [
-    "text-color",
-    "text-opacity",
-    "text-halo-blur",
-    "text-halo-color",
-    "text-halo-width",
-  ],
-};
+const textLayoutKeys = [
+  "symbol-placement", // TODO: both here and in ../anchors/anchors.js
+  "text-anchor",
+  "text-justify",
+  "text-letter-spacing",
+  "text-line-height",
+  "text-max-width",
+  "text-offset",
+  "text-padding",
+  "text-rotation-alignment",
+  "text-size",
+];
 
 function getGlyphs(feature, atlas) {
+  if (!atlas) return;
   const { charCodes, font } = feature;
-  const positions = atlas?.positions[font];
+  const positions = atlas.positions[font];
   if (!positions || !charCodes || !charCodes.length) return;
 
   const { width, height } = atlas.image;
@@ -6894,9 +6801,9 @@ function buildCollider(placement) {
 
 function pointCollision(icon, text, anchor, tree) {
   const [x0, y0] = anchor;
-  const boxes = [];
-  if (icon) boxes.push(formatBox(x0, y0, icon.bbox));
-  if (text) boxes.push(formatBox(x0, y0, text.bbox));
+  const boxes = [icon, text]
+    .filter(label => label !== undefined)
+    .map(label => formatBox(x0, y0, label.bbox));
 
   if (boxes.some(tree.collides, tree)) return true;
   // TODO: drop if outside tile?
@@ -6919,17 +6826,16 @@ function lineCollision(icon, text, anchor, tree) {
   const sin_a = sin$1(angle);
   const rotate = ([x, y]) => [x * cos_a - y * sin_a, x * sin_a + y * cos_a];
 
-  const boxes = [];
-  if (text) text.map(c => getCharBbox(c.pos, rotate))
-    .map(bbox => formatBox(x0, y0, bbox))
-    .forEach(box => boxes.push(box));
-  if (icon) boxes.push(formatBox(x0, y0, getCharBbox(icon.pos, rotate)));
+  const boxes = [icon, text].flat()
+    .filter(glyph => glyph !== undefined)
+    .map(g => getGlyphBbox(g.pos, rotate))
+    .map(bbox => formatBox(x0, y0, bbox));
 
   if (boxes.some(tree.collides, tree)) return true;
   boxes.forEach(tree.insert, tree);
 }
 
-function getCharBbox([x, y, w, h], rotate) {
+function getGlyphBbox([x, y, w, h], rotate) {
   const corners = [
     [x, y], [x + w, y],
     [x, y + h], [x + w, y + h]
@@ -7141,7 +7047,9 @@ function getLineAnchors(geometry, extent, icon, text, layoutVals) {
   const alignment = (text) ? textRotationAlignment : iconRotationAlignment;
   const keepUpright = (text) ? textKeepUpright : iconKeepUpright;
 
-  const box = mergeBoxes(icon?.bbox, text?.bbox);
+  const iconbox = (icon) ? icon.bbox : undefined;
+  const textbox = (text) ? text.bbox : undefined;
+  const box = mergeBoxes(iconbox, textbox);
   const labelLength = (alignment === "viewport") ? 0.0 : box[2] - box[0];
   const spacing = max(symbolSpacing, labelLength + symbolSpacing / 4);
 
@@ -7177,10 +7085,10 @@ function getLineAnchors(geometry, extent, icon, text, layoutVals) {
 }
 
 function initAnchors(style) {
-  const getStyles = initStyleGetters(symbolKeys, style);
+  const getStyles = initStyleGetters(symbolLayoutKeys, style);
 
   return function(feature, tileCoords, icon, text, tree) {
-    const { layoutVals } = getStyles(tileCoords.z, feature);
+    const layoutVals = getStyles(tileCoords.z, feature);
     const collides = buildCollider(layoutVals.symbolPlacement);
 
     // TODO: get extent from tile?
@@ -7189,19 +7097,16 @@ function initAnchors(style) {
   };
 }
 
-const symbolKeys = {
-  layout: [
-    "symbol-placement",
-    "symbol-spacing",
-    // TODO: these are in 2 places: here and in the text getter
-    "text-rotation-alignment",
-    "text-size",
-    "icon-rotation-alignment",
-    "icon-keep-upright",
-    "text-keep-upright",
-  ],
-  paint: [],
-};
+const symbolLayoutKeys = [
+  "symbol-placement",
+  "symbol-spacing",
+  // TODO: these are in 2 places: here and in the text getter
+  "text-rotation-alignment",
+  "text-size",
+  "icon-rotation-alignment",
+  "icon-keep-upright",
+  "text-keep-upright",
+];
 
 function getAnchors(geometry, extent, icon, text, layoutVals) {
   switch (layoutVals.symbolPlacement) {
@@ -7225,54 +7130,22 @@ function getPointAnchors({ type, coordinates }) {
   }
 }
 
-function getBuffers(icon, text, anchor, tileCoords) {
-  const iconBuffers = getIconBuffers(icon, anchor, tileCoords);
-  const textBuffers = getTextBuffers(text, anchor, tileCoords);
-  return mergeBuffers(iconBuffers, textBuffers);
+function getBuffers(icon, text, anchor) {
+  const iconBuffers = buildBuffers(icon, anchor);
+  const textBuffers = buildBuffers(text, anchor);
+  return [iconBuffers, textBuffers].filter(b => b !== undefined);
 }
 
-function getIconBuffers(icon, anchor, { z, x, y }) {
-  if (!icon) return;
+function buildBuffers(glyphs, anchor) {
+  if (!glyphs) return;
 
-  // NOTE: mergeBuffers may overwrite tileCoords with the text buffer of the
-  // same name. This is OK because the text buffer, if it exists, is longer
-  const buffers = {
-    spriteRect: icon.rect,
-    spritePos: icon.pos,
-    labelPos0: [...anchor],
-    tileCoords: [x, y, z],
+  const origin = [...anchor, glyphs.fontScalar];
+
+  return {
+    glyphRect: glyphs.flatMap(g => g.rect),
+    glyphPos: glyphs.flatMap(g => g.pos),
+    labelPos: glyphs.flatMap(() => origin),
   };
-
-  Object.entries(icon.bufferVals).forEach(([key, val]) => {
-    buffers[key] = val;
-  });
-
-  return buffers;
-}
-
-function getTextBuffers(text, anchor, { z, x, y }) {
-  if (!text) return;
-
-  const origin = [...anchor, text.fontScalar];
-
-  const buffers = {
-    sdfRect: text.flatMap(c => c.rect),
-    charPos: text.flatMap(c => c.pos),
-    labelPos: text.flatMap(() => origin),
-    tileCoords: text.flatMap(() => [x, y, z]),
-  };
-
-  Object.entries(text.bufferVals).forEach(([key, val]) => {
-    buffers[key] = text.flatMap(() => val);
-  });
-
-  return buffers;
-}
-
-function mergeBuffers(buf1, buf2) {
-  if (!buf1) return buf2;
-  if (!buf2) return buf1;
-  return Object.assign(buf1, buf2);
 }
 
 function initShaping(style, spriteData) {
@@ -7280,7 +7153,9 @@ function initShaping(style, spriteData) {
   const getText = initText(style);
   const getAnchors = initAnchors(style);
 
-  return function(feature, tileCoords, atlas, tree) {
+  return { serialize, getLength, styleKeys };
+
+  function serialize(feature, tileCoords, atlas, tree) {
     // tree is an RBush from the 'rbush' module. NOTE: will be updated!
 
     const icon = getIcon(feature, tileCoords);
@@ -7291,9 +7166,13 @@ function initShaping(style, spriteData) {
     if (!anchors || !anchors.length) return;
 
     return anchors
-      .map(anchor => getBuffers(icon, text, anchor, tileCoords))
+      .flatMap(anchor => getBuffers(icon, text, anchor))
       .reduce(combineBuffers, {});
-  };
+  }
+
+  function getLength(buffers) {
+    return buffers.labelPos.length / 4;
+  }
 }
 
 function combineBuffers(dict, buffers) {
@@ -7304,14 +7183,32 @@ function combineBuffers(dict, buffers) {
   return dict;
 }
 
+function setParams(userParams) {
+  const { glyphs, spriteData, layers } = userParams;
+
+  if (!layers || !layers.length) fail("no valid array of style layers");
+  const parsedStyles = layers.map(getStyleFuncs);
+
+  const glyphsOK = ["string", "undefined"].includes(typeof glyphs);
+  if (!glyphsOK) fail("glyphs must be a string URL");
+
+  const getAtlas = initAtlasGetter({ parsedStyles, glyphEndpoint: glyphs });
+
+  return { parsedStyles, spriteData, getAtlas };
+}
+
+function fail(message) {
+  throw Error("tile-gl initSerializer: " + message);
+}
+
 const circleInfo = {
   styleKeys: ["circle-radius", "circle-color", "circle-opacity"],
   serialize: flattenPoints,
   getLength: (buffers) => buffers.circlePos.length / 2,
 };
 
-function flattenPoints(geometry) {
-  const { type, coordinates } = geometry;
+function flattenPoints(feature) {
+  const { type, coordinates } = feature.geometry;
   if (!coordinates || !coordinates.length) return;
 
   switch (type) {
@@ -7335,8 +7232,8 @@ const lineInfo = {
   getLength: (buffers) => buffers.lines.length / 3,
 };
 
-function flattenLines(geometry) {
-  const { type, coordinates } = geometry;
+function flattenLines(feature) {
+  const { type, coordinates } = feature.geometry;
   if (!coordinates || !coordinates.length) return;
 
   switch (type) {
@@ -8081,8 +7978,8 @@ const fillInfo = {
   getLength: (buffers) => buffers.position.length / 2,
 };
 
-function triangulate(geometry) {
-  const { type, coordinates } = geometry;
+function triangulate(feature) {
+  const { type, coordinates } = feature.geometry;
   if (!coordinates || !coordinates.length) return;
 
   switch (type) {
@@ -8110,16 +8007,14 @@ function camelCase(hyphenated) {
   return hyphenated.replace(/-([a-z])/gi, (h, c) => c.toUpperCase());
 }
 
-function initFeatureSerializer(style, spriteData) {
-  const { type, paint } = style;
-
-  switch (type) {
+function getSerializeInfo(style, spriteData) {
+  switch (style.type) {
     case "circle":
-      return initParsing(paint, circleInfo);
+      return circleInfo;
     case "line":
-      return initParsing(paint, lineInfo);
+      return lineInfo;
     case "fill":
-      return initParsing(paint, fillInfo);
+      return fillInfo;
     case "symbol":
       return initShaping(style, spriteData);
     default:
@@ -8127,20 +8022,21 @@ function initFeatureSerializer(style, spriteData) {
   }
 }
 
-function initParsing(paint, info) {
+function initFeatureSerializer(paint, info) {
   const { styleKeys, serialize, getLength } = info;
-  const dataFuncs = styleKeys.filter(k => paint[k].type === "property")
+
+  const dataFuncs = styleKeys
+    .filter(k => paint[k].type === "property")
     .map(k => ([paint[k], camelCase(k)]));
 
-  return function(feature, { z, x, y }) {
-    const buffers = serialize(feature.geometry);
+  return function(feature, tileCoords, atlas, tree) {
+    const buffers = serialize(feature, tileCoords, atlas, tree);
     if (!buffers) return;
 
     const dummy = Array.from({ length: getLength(buffers) });
 
-    buffers.tileCoords = dummy.flatMap(() => [x, y, z]);
     dataFuncs.forEach(([get, key]) => {
-      const val = get(null, feature);
+      const val = get(null, feature); // Note: could be an Array
       buffers[key] = dummy.flatMap(() => val);
     });
 
@@ -8148,17 +8044,18 @@ function initParsing(paint, info) {
   };
 }
 
-function concatBuffers(features) {
+function concatBuffers(buffers) {
   // Concatenate the buffers from all the features
-  const arrays = features.map(f => f.buffers).reduce(appendBuffers, {});
+  const arrays = buffers.reduce(appendBuffers, {});
 
   // Convert to TypedArrays (now that the lengths are finalized)
-  return Object.entries(arrays).reduce((d, [key, buffer]) => {
-    d[key] = (key === "indices")
-      ? new Uint32Array(buffer)
-      : new Float32Array(buffer);
-    return d;
-  }, {});
+  return Object.entries(arrays)
+    .reduce((d, [k, a]) => (d[k] = makeTypedArray(k, a), d), {});
+}
+
+function makeTypedArray(key, array) {
+  const type = (key === "indices") ? Uint32Array : Float32Array;
+  return new type(array);
 }
 
 function appendBuffers(buffers, newBuffers) {
@@ -8181,25 +8078,24 @@ function appendBuffers(buffers, newBuffers) {
 function initLayerSerializer(style, spriteData) {
   const { id, type, interactive } = style;
 
-  const transform = initFeatureSerializer(style, spriteData);
+  const info = getSerializeInfo(style, spriteData);
+  const transform = initFeatureSerializer(style.paint, info);
   if (!transform) return;
 
   return function(layer, tileCoords, atlas, tree) {
     const { extent, features } = layer;
 
-    const transformed = features.map(feature => {
-      const { properties, geometry } = feature;
-      const buffers = transform(feature, tileCoords, atlas, tree);
-      // If no buffers, skip entire feature (it won't be rendered)
-      if (buffers) return { properties, geometry, buffers };
-    }).filter(f => f !== undefined);
+    const transformed = features
+      .map(f => transform(f, tileCoords, atlas, tree))
+      .filter(f => f !== undefined);
 
     if (!transformed.length) return;
 
-    const newLayer = { type, extent, buffers: concatBuffers(transformed) };
+    const buffers = concatBuffers(transformed);
+    const length = info.getLength(buffers);
+    const newLayer = { type, extent, buffers, length };
 
-    if (interactive) newLayer.features = transformed
-      .map(({ properties, geometry }) => ({ properties, geometry }));
+    if (interactive) newLayer.features = features.slice();
 
     return { [id]: newLayer };
   };
@@ -8770,52 +8666,57 @@ function multiSelect(arr, left, right, n, compare) {
     }
 }
 
-function initTileSerializer(styles, spriteData) {
-  const layerSerializers = styles
+function initSerializer$1(userParams) {
+  const { parsedStyles, spriteData, getAtlas } = setParams(userParams);
+
+  const layerSerializers = parsedStyles
     .reduce((d, s) => (d[s.id] = initLayerSerializer(s, spriteData), d), {});
 
-  return function(layers, tileCoords, atlas) {
+  return function(source, tileCoords) {
+    return getAtlas(source, tileCoords.z)
+      .then(atlas => process(source, tileCoords, atlas));
+  };
+
+  function process(source, coords, atlas) {
     const tree = new RBush();
 
-    return Object.entries(layers)
+    function serializeLayer([id, layer]) {
+      const serialize = layerSerializers[id];
+      if (serialize) return serialize(layer, coords, atlas, tree);
+    }
+
+    const layers = Object.entries(source)
       .reverse() // Reverse order for collision checks
-      .map(([id, layer]) => {
-        const serialize = layerSerializers[id];
-        if (serialize) return serialize(layer, tileCoords, atlas, tree);
-      })
+      .map(serializeLayer)
       .reverse()
       .reduce((d, l) => Object.assign(d, l), {});
-  };
+
+    // Note: atlas.data.buffer is a Transferable
+    return { atlas: atlas.image, layers };
+  }
+}
+
+function addTileCoords(tile, coords) {
+  const { z, x, y } = coords;
+
+  Object.values(tile.layers).forEach(layer => {
+    const { length, buffers } = layer;
+    const coordArray = Array.from({ length }).flatMap(() => [x, y, z]);
+    buffers.tileCoords = new Float32Array(coordArray);
+  });
+
+  return tile;
 }
 
 function initSerializer(userParams) {
-  const { glyphEndpoint, spriteData, layers } = setParams(userParams);
-  const parsedStyles = layers.map(getStyleFuncs);
+  const serialize = initSerializer$1(userParams);
 
-  const getAtlas = initAtlasGetter({ parsedStyles, glyphEndpoint });
-  const process = initTileSerializer(parsedStyles, spriteData);
+  function wrapSerialize(source, tileCoords) {
+    return serialize(source, tileCoords)
+      .then(tile => addTileCoords(tile, tileCoords));
+  }
 
-  return function(source, tileCoords) {
-    return getAtlas(source, tileCoords.z).then(atlas => {
-      const layers = process(source, tileCoords, atlas);
-
-      // Note: atlas.data.buffer is a Transferable
-      return { atlas: atlas.image, layers };
-    });
-  };
-}
-
-function setParams({ glyphs, spriteData, layers }) {
-  if (!layers || !layers.length) fail("no valid array of style layers");
-
-  const glyphsOK = ["string", "undefined"].includes(typeof glyphs);
-  if (!glyphsOK) fail("glyphs must be a string URL");
-
-  return { glyphEndpoint: glyphs, spriteData, layers };
-}
-
-function fail(message) {
-  throw Error("tile-gl initSerializer: " + message);
+  return wrapSerialize;
 }
 
 function initTileFunctions({ source, glyphs, spriteData, layers }) {
@@ -9328,13 +9229,11 @@ function initRenderer(context, coords, style) {
   const { PI, cosh } = Math;
   const { layers, spriteData } = style;
 
-  const sprite = context.loadSprite(spriteData?.image);
+  if (spriteData) context.loadSprite(spriteData.image);
 
   const painters = layers.map(layer => {
-    const painter = context.initPainter(getStyleFuncs(layer), sprite);
-
-    painter.visible = () => layer.visible;
-    return painter;
+    const painter = context.initPainter(getStyleFuncs(layer));
+    return Object.assign(painter, { visible: () => layer.visible });
   });
 
   return function(tilesets, pixRatio = 1, dzScale = 1) {
@@ -11004,6 +10903,92 @@ function initCursor3d(params, camera) {
   }
 }
 
+function interpolateZoom(p0, p1) {
+  const [ux0, uy0, w0] = p0;
+  const [ux1, uy1, w1] = p1;
+
+  const { cosh, sinh, tanh, exp, log, hypot, SQRT2, abs } = Math;
+  const rho = SQRT2;
+  const epsilon = 1e-6;
+
+  const dx = ux1 - ux0;
+  const dy = uy1 - uy0;
+  const du = hypot(dx, dy);
+
+  const rho2du = rho * rho * du;
+  const uScale = w0 / rho2du;
+
+  const b0 = (w1 * w1 - w0 * w0 + rho2du * rho2du) / (2 * w0 * rho2du);
+  const b1 = (w1 * w1 - w0 * w0 - rho2du * rho2du) / (2 * w1 * rho2du);
+  const r0 = log(hypot(b0, 1) - b0);
+  const r1 = log(hypot(b1, 1) - b1);
+  const coshr0 = cosh(r0);
+  const sinhr0 = sinh(r0);
+
+  const rhoS = (du < epsilon) ? log(w1 / w0) : (r1 - r0);
+
+  function special(t) { // Special case for u0 =~ u1
+    return [
+      ux0 + t * dx,
+      uy0 + t * dy,
+      w0 * exp(rhoS * t),
+    ];
+  }
+
+  function general(t) { // General case
+    const uarg = rhoS * t + r0;
+    const u = uScale * (coshr0 * tanh(uarg) - sinhr0);
+    return [
+      ux0 + u * dx,
+      uy0 + u * dy,
+      w0 * coshr0 / cosh(uarg)
+    ];
+  }
+
+  const interp = (du < epsilon) ? special : general;
+
+  return Object.assign(interp, { duration: abs(rhoS) / rho });
+}
+
+function initFlights(params, camera) {
+  const { ellipsoid, bounds } = params;
+
+  const wScale = 2.0 / (ellipsoid.meanRadius() * Math.PI);
+  let t, interp, active = false;
+
+  function flyTo(position) {
+    if (!bounds.check(position)) {
+      return console.log("spinningBall.flyTo: position out of bounds");
+    }
+
+    const [lon0, lat0, alt0] = camera.position();
+    const [lon1, lat1, alt1] = position;
+    // Scale altitude to be on the same order as lon, lat, and wrap longitude
+    const p0 = [lon0, lat0, alt0 * wScale];
+    const p1 = [lon0 + wrapLongitude(lon1 - lon0), lat1, alt1 * wScale];
+
+    interp = interpolateZoom(p0, p1);
+    t = 0.0;
+    active = true;
+  }
+
+  function update(position, velocity, dt) {
+    if (!active) return;
+    t = Math.min(1.0, t + dt / interp.duration);
+    const newPos = interp(t);
+    newPos[2] /= wScale; // Revert scaling applied in flyTo
+
+    if (t == 1.0) active = false;
+    return position.map((c, i) => newPos[i] - c);
+  }
+
+  return {
+    flyTo, update,
+    active: () => active,
+    cancel: () => (active = false),
+  };
+}
+
 function oscillatorChange(x, v, t, w0) {
   // For a critically damped oscillator with natural frequency w0, find
   // the change in position x and velocity v over timestep t.  See
@@ -11156,7 +11141,7 @@ function initCoast(ellipsoid) {
   };
 }
 
-function initCameraDynamics(ellipsoid, camera, cursor3d) {
+function initCameraDynamics(ellipsoid, camera, cursor3d, flights) {
   // Velocity is the time differential of camera.position
   const velocity = new Float64Array(3);
 
@@ -11177,29 +11162,33 @@ function initCameraDynamics(ellipsoid, camera, cursor3d) {
   };
 
   function update(newTime) {
-    const deltaTime = newTime - time;
+    const deltaT = newTime - time;
     time = newTime;
     // If timestep too big, wait till next frame to update physics
-    if (deltaTime > 0.25) return false;
+    if (deltaT > 0.25) return false;
 
-    const rotation = (cursor3d.isClicked())
-      ? rotate(camera.position(), velocity, deltaTime)
-      : coast(camera.position(), velocity, deltaTime);
-    camera.update(rotation);
+    if (cursor3d.isClicked()) flights.cancel();
 
-    const rotated = rotation.some(c => c != 0.0);
-    if (!cursor3d.isZooming()) return rotated;
+    const dPos =
+      (cursor3d.isClicked()) ? rotate(camera.position(), velocity, deltaT) :
+      (flights.active()) ? flights.update(camera.position(), velocity, deltaT) :
+      coast(camera.position(), velocity, deltaT);
+    camera.update(dPos);
 
+    const moved = dPos.some(c => c != 0.0);
+    if (!cursor3d.isZooming()) return moved;
+
+    flights.cancel();
     // Update 2D screen position of 3D zoom position
     const visible = camera.ecefToScreenRay(rayVec, cursor3d.zoomPosition);
     if (!visible) {
       velocity.fill(0.0, 2); // TODO: is this needed? Or keep coasting?
       cursor3d.stopZoom();
-      return rotated;
+      return moved;
     }
 
     if (cursor3d.isClicked()) cursor3d.zoomRay.set(rayVec);
-    const zoomChange = zoom(camera.position(), velocity, deltaTime);
+    const zoomChange = zoom(camera.position(), velocity, deltaT);
     camera.update(zoomChange);
     return true;
   }
@@ -11211,7 +11200,8 @@ function init(userParams) {
 
   const camera = initCamera(params);
   const cursor = initCursor3d(params, camera);
-  const dynamics = initCameraDynamics(ellipsoid, camera, cursor);
+  const flights = initFlights(params, camera);
+  const dynamics = initCameraDynamics(ellipsoid, camera, cursor, flights);
 
   let camMoving, cursorChanged;
 
@@ -11228,6 +11218,7 @@ function init(userParams) {
     wasTapped: cursor.wasTapped,
     cursorChanged: () => cursorChanged,
 
+    flyTo: (destination) => flights.flyTo(units.convert(destination)),
     update,
   };
 
