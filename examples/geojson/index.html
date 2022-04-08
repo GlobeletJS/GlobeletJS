@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
   <head>
     <title>Globelet - Beta</title>
@@ -14,10 +14,9 @@
 
   <body>
     <div id="globe"></div>
-  </body>
 
-  <script type="module">
-    import * as globeletjs from "../../dist/globelet.js";
+    <script type="module">
+      import * as globeletjs from "../../dist/globelet.js";
 
     globeletjs.initGlobe({
       container: 'globe',
@@ -42,5 +41,7 @@
         requestID = requestAnimationFrame(animate);
       }
     }).catch(console.log);
-  </script>
+    </script>
+  </body>
+
 </html>
