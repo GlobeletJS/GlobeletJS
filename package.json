@@ -1,6 +1,6 @@
 {
   "name": "globeletjs",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Lightweight vector maps on a globe",
   "main": "dist/globelet-iife.js",
   "module": "dist/globelet.js",
