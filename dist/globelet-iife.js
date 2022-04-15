@@ -301,6 +301,7 @@ var globeletjs = (function (exports) {
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
       const log = gl.getShaderInfoLog(shader);
       gl.deleteShader(shader);
+      console.log("shader source = " + source);
       fail$3("An error occured compiling the shader", log);
     }
 
@@ -647,8 +648,8 @@ bool inside(vec2 pos) {
       0.001 < pos.y && pos.y < 0.999 );
 }
 
-vec4 sampleLOD(sampler2D samplers[nLod], vec2 coords[nLod]) {
-  return ${args.buildSelector}texture(samplers[0], coords[0]);
+vec4 sampleLOD(vec2 coords[nLod]) {
+  return ${args.buildSelector}texture(uTextureSampler[0], coords[0]);
 }
 
 vec4 texLookup(vec2 dMerc) {
@@ -659,7 +660,7 @@ vec4 texLookup(vec2 dMerc) {
     texCoords[i].x = dateline(texCoords[i].x);
   }
 
-  return sampleLOD(uTextureSampler, texCoords);
+  return sampleLOD(texCoords);
 }
 `;
 
@@ -769,7 +770,7 @@ precision highp sampler2D;
     // and sample the highest LOD that contains the current coordinate
     let selector = ``; // eslint-disable-line quotes
     while (--n) selector += `inside(coords[${n}])
-    ? texture(samplers[${n}], coords[${n}])
+    ? texture(uTextureSampler[${n}], coords[${n}])
     : `;
     return selector;
   }
